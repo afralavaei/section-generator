@@ -16,7 +16,8 @@ ZONE_COLORS = {
     "chair_left":  "#fde9a2",
     "chair_right": "#fde9a2",
     "table":       "#d0e8d0",
-    "shelf":       "#f4c2c2",
+    "shelf":       "#ac2e2e",
+    "filler":      "#e0e0e0",
 }
 
 # ── Module Library ────────────────────────────────────────────────────────────
@@ -93,6 +94,68 @@ MODULES: Dict[str, dict] = {
             "right":  [],
         },
     },
+
+    # ── 1×1 filler tiles ──────────────────────────────────────────────────────
+    "filler_empty": {
+        "id": "filler_empty", "w": 1, "h": 1, "zone": "filler",
+        "segments": [],
+        "ports": {"top": [], "bottom": [], "left": [], "right": []},
+    },
+    "filler_pass_v": {
+        "id": "filler_pass_v", "w": 1, "h": 1, "zone": "filler",
+        "segments": [[(0.5, 0.0), (0.5, 1.0)]],
+        "ports": {"top": [(0.5, 1.0)], "bottom": [(0.5, 0.0)], "left": [], "right": []},
+    },
+    "filler_pass_h": {
+        "id": "filler_pass_h", "w": 1, "h": 1, "zone": "filler",
+        "segments": [[(0.0, 0.5), (1.0, 0.5)]],
+        "ports": {"top": [], "bottom": [], "left": [(0.0, 0.5)], "right": [(1.0, 0.5)]},
+    },
+    # "filler_corner_br": {
+    #     "id": "filler_corner_br", "w": 1, "h": 1, "zone": "filler",
+    #     "segments": [[(0.5, 0.0), (0.5, 0.5), (1.0, 0.5)]],
+    #     "ports": {"top": [], "bottom": [(0.5, 0.0)], "left": [], "right": [(1.0, 0.5)]},
+    # },
+    # "filler_corner_bl": {
+    #     "id": "filler_corner_bl", "w": 1, "h": 1, "zone": "filler",
+    #     "segments": [[(0.5, 0.0), (0.5, 0.5), (0.0, 0.5)]],
+    #     "ports": {"top": [], "bottom": [(0.5, 0.0)], "left": [(0.0, 0.5)], "right": []},
+    # },
+    # "filler_corner_tr": {
+    #     "id": "filler_corner_tr", "w": 1, "h": 1, "zone": "filler",
+    #     "segments": [[(0.5, 1.0), (0.5, 0.5), (1.0, 0.5)]],
+    #     "ports": {"top": [(0.5, 1.0)], "bottom": [], "left": [], "right": [(1.0, 0.5)]},
+    # },
+    # "filler_corner_tl": {
+    #     "id": "filler_corner_tl", "w": 1, "h": 1, "zone": "filler",
+    #     "segments": [[(0.5, 1.0), (0.5, 0.5), (0.0, 0.5)]],
+    #     "ports": {"top": [(0.5, 1.0)], "bottom": [], "left": [(0.0, 0.5)], "right": []},
+    # },
+    # "filler_t_up": {
+    #     "id": "filler_t_up", "w": 1, "h": 1, "zone": "filler",
+    #     "segments": [[(0.0, 0.5), (1.0, 0.5)], [(0.5, 0.5), (0.5, 1.0)]],
+    #     "ports": {"top": [(0.5, 1.0)], "bottom": [], "left": [(0.0, 0.5)], "right": [(1.0, 0.5)]},
+    # },
+    # "filler_t_down": {
+    #     "id": "filler_t_down", "w": 1, "h": 1, "zone": "filler",
+    #     "segments": [[(0.0, 0.5), (1.0, 0.5)], [(0.5, 0.5), (0.5, 0.0)]],
+    #     "ports": {"top": [], "bottom": [(0.5, 0.0)], "left": [(0.0, 0.5)], "right": [(1.0, 0.5)]},
+    # },
+    # "filler_t_left": {
+    #     "id": "filler_t_left", "w": 1, "h": 1, "zone": "filler",
+    #     "segments": [[(0.5, 0.0), (0.5, 1.0)], [(0.5, 0.5), (0.0, 0.5)]],
+    #     "ports": {"top": [(0.5, 1.0)], "bottom": [(0.5, 0.0)], "left": [(0.0, 0.5)], "right": []},
+    # },
+    # "filler_t_right": {
+    #     "id": "filler_t_right", "w": 1, "h": 1, "zone": "filler",
+    #     "segments": [[(0.5, 0.0), (0.5, 1.0)], [(0.5, 0.5), (1.0, 0.5)]],
+    #     "ports": {"top": [(0.5, 1.0)], "bottom": [(0.5, 0.0)], "left": [], "right": [(1.0, 0.5)]},
+    # },
+    # "filler_cross": {
+    #     "id": "filler_cross", "w": 1, "h": 1, "zone": "filler",
+    #     "segments": [[(0.5, 0.0), (0.5, 1.0)], [(0.0, 0.5), (1.0, 0.5)]],
+    #     "ports": {"top": [(0.5, 1.0)], "bottom": [(0.5, 0.0)], "left": [(0.0, 0.5)], "right": [(1.0, 0.5)]},
+    # },
 }
 
 # ── Zone definitions ──────────────────────────────────────────────────────────
@@ -120,9 +183,9 @@ ZONES = [
     },
     {
         "id":      "shelf",
-        "x_rule":  ["first 6"],
+        "x_rule":  ["full"],     # spans full section width — module created at solve time
         "y_rule":  ["last 3"],
-        "modules": ["shelf_h3_v1"],
+        "modules": [],           # populated dynamically inside solve()
     },
 ]
 
@@ -132,8 +195,10 @@ SECTION_RULES = ["chair_left", "table", "chair_right", "shelf"]
 # ── Zone resolver ─────────────────────────────────────────────────────────────
 
 def resolve_rule(rule: str, dim: int) -> Tuple[int, int]:
-    """Parse 'first N' / 'last N' / 'middle N' → (start, end)."""
+    """Parse 'first N' / 'last N' / 'middle N' / 'full' → (start, end)."""
     parts = rule.strip().split()
+    if parts[0] == "full":
+        return (0, dim)
     n = int(parts[1])
     if parts[0] == "first":
         return (0, n)
@@ -244,25 +309,62 @@ def check_circuit(placed: List[dict]) -> bool:
 
 # ── Solver ────────────────────────────────────────────────────────────────────
 
+def _gap_cells(placed_so_far: List[dict], W: int, H: int) -> List[Tuple[int, int]]:
+    """Return all (col, row) cells in the W×H grid not covered by any placed module."""
+    covered: set = set()
+    for p in placed_so_far:
+        m = MODULES[p["module_id"]]
+        for col in range(int(p["x_off"]), int(p["x_off"]) + m["w"]):
+            for row in range(int(p["y_off"]), int(p["y_off"]) + m["h"]):
+                covered.add((col, row))
+    return [(col, row) for row in range(H) for col in range(W)
+            if (col, row) not in covered]
+
+
 def solve(W: int, H: int, seed: int) -> Optional[List[dict]]:
     """
-    Backtracking solver over zone assignments.
-    Returns a list of placed-module dicts, or None if unsolvable.
-    Each placed entry: {module_id, x_off, y_off, w, h}
+    Two-phase backtracking solver.
+    Phase 1: place named zone modules (chair, table, shelf, …).
+    Phase 2: fill every remaining cell with a 1×1 filler tile so the
+             full W×H grid is covered and the closed-circuit rule is met.
     """
     rng = random.Random(seed)
+    filler_ids = [mid for mid, m in MODULES.items() if m["zone"] == "filler"]
 
-    # Build candidate options per zone
-    candidates: List[List[dict]] = []
-    for zone in ZONES:
-        options = []
+    # Ensure a shelf module exists for this exact width
+    shelf_id = f"shelf_h3_w{W}_v1"
+    if shelf_id not in MODULES:
+        MODULES[shelf_id] = {
+            "id": shelf_id, "w": W, "h": 3, "zone": "shelf",
+            "segments": [
+                [(0.5, 0.0), (0.5, 2.5)],
+                [(W - 0.5, 0.0), (W - 0.5, 2.5)],
+                [(0.5, 2.5), (W - 0.5, 2.5)],
+            ],
+            "ports": {
+                "top":    [],
+                "bottom": [(0.5, 0.0), (W - 0.5, 0.0)],
+                "left":   [],
+                "right":  [],
+            },
+        }
+
+    # Build a local zones list with the shelf pointing at the right module
+    zones = [
+        z if z["id"] != "shelf" else {**z, "modules": [shelf_id]}
+        for z in ZONES
+    ]
+
+    # Phase 1 candidates — one option list per named zone
+    reg_candidates: List[List[dict]] = []
+    for zone in zones:
+        options: List[dict] = []
         for xr in zone["x_rule"]:
             for yr in zone["y_rule"]:
                 res = resolve_zone_position(zone, W, H, xr, yr)
                 w, h = res["w"], res["h"]
                 for mid in zone["modules"]:
-                    m = MODULES[mid]
-                    if m["w"] == w and m["h"] == h:
+                    if MODULES[mid]["w"] == w and MODULES[mid]["h"] == h:
                         options.append({
                             "module_id": mid,
                             "x_off": res["x_off"],
@@ -270,22 +372,52 @@ def solve(W: int, H: int, seed: int) -> Optional[List[dict]]:
                             "w": w, "h": h,
                         })
         rng.shuffle(options)
-        candidates.append(options)
+        reg_candidates.append(options)
 
     placed: List[dict] = []
 
-    def backtrack(i: int) -> bool:
-        if i == len(candidates):
-            return check_circuit(placed)
-        for opt in candidates[i]:
+    def solve_gaps() -> bool:
+        """Phase 2: backtrack over every uncovered cell with filler tiles."""
+        gaps = _gap_cells(placed, W, H)
+        gap_candidates = []
+        for col, row in gaps:
+            opts = [
+                {"module_id": mid, "x_off": float(col), "y_off": float(row), "w": 1, "h": 1}
+                for mid in filler_ids
+            ]
+            rng.shuffle(opts)
+            gap_candidates.append(opts)
+
+        n_before = len(placed)
+
+        def bt_gap(i: int) -> bool:
+            if i == len(gap_candidates):
+                return check_circuit(placed)
+            for opt in gap_candidates[i]:
+                placed.append(opt)
+                if check_adjacency(placed):
+                    if bt_gap(i + 1):
+                        return True
+                placed.pop()
+            return False
+
+        ok = bt_gap(0)
+        if not ok:
+            del placed[n_before:]   # clean up any partial gap placements
+        return ok
+
+    def bt_reg(i: int) -> bool:
+        if i == len(reg_candidates):
+            return solve_gaps()
+        for opt in reg_candidates[i]:
             placed.append(opt)
             if check_adjacency(placed):
-                if backtrack(i + 1):
+                if bt_reg(i + 1):
                     return True
             placed.pop()
         return False
 
-    return placed if backtrack(0) else None
+    return placed if bt_reg(0) else None
 
 # ── Drawing helpers ───────────────────────────────────────────────────────────
 
@@ -346,16 +478,27 @@ def plot_section(placed: List[dict], W: int, H: int) -> plt.Figure:
 
 # ── Module library plot ───────────────────────────────────────────────────────
 
+ZONE_ORDER = ["chair_left", "chair_right", "table", "shelf", "filler"]
+
+
 def plot_module_library() -> plt.Figure:
-    mods = list(MODULES.values())
-    n_cols = 3
+    mods = sorted(
+        MODULES.values(),
+        key=lambda m: (
+            ZONE_ORDER.index(m["zone"]) if m["zone"] in ZONE_ORDER else 99,
+            m["id"],
+        ),
+    )
+
+    n_cols = 4
     n_rows = math.ceil(len(mods) / n_cols)
     pad = 0.8
 
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 4.5, n_rows * 4.0),
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 4.0, n_rows * 3.5),
                              squeeze=False)
     flat = axes.flatten()
 
+    prev_zone = None
     for i, mod in enumerate(mods):
         ax = flat[i]
         w, h = mod["w"], mod["h"]
@@ -364,7 +507,24 @@ def plot_module_library() -> plt.Figure:
         ax.set_ylim(-pad, h + pad)
         ax.set_aspect("equal")
         ax.axis("off")
-        ax.set_title(f'{mod["id"]}\n{w}w × {h}h', fontsize=8, pad=4)
+
+        # Short display name: strip "filler_" prefix for filler tiles
+        short = mod["id"].replace("filler_", "")
+        ax.set_title(f'{short}\n{w}w × {h}h', fontsize=8, pad=4)
+
+        # Zone group label above the first tile of each new zone
+        if mod["zone"] != prev_zone:
+            fc = ZONE_COLORS.get(mod["zone"], "#e0e0e0")
+            label = mod["zone"].replace("_", " ").upper()
+            ax.annotate(
+                label,
+                xy=(0.0, 1.0), xycoords="axes fraction",
+                xytext=(0.0, 1.14), textcoords="axes fraction",
+                ha="left", va="bottom", annotation_clip=False,
+                fontsize=8.5, fontweight="bold", color="#333333",
+                bbox=dict(boxstyle="round,pad=0.2", fc=fc, ec="none", alpha=0.7),
+            )
+            prev_zone = mod["zone"]
 
     for j in range(len(mods), len(flat)):
         flat[j].axis("off")
@@ -394,11 +554,11 @@ with tab_sec:
     with c1:
         seed = int(st.number_input("Seed", min_value=0, max_value=1_000_000, value=42, step=1))
     with c2:
-        W = int(st.number_input("Width W", min_value=6, max_value=6, value=6, step=1,
-                                help="Fixed at 6 for prototype (shelf spans full width)"))
+        W = int(st.number_input("Width W", min_value=6, max_value=20, value=6, step=1,
+                                help="Shelf auto-scales to full width; gaps between zones filled automatically"))
     with c3:
-        H = int(st.number_input("Height H", min_value=6, max_value=6, value=6, step=1,
-                                help="Fixed at 6 for prototype"))
+        H = int(st.number_input("Height H", min_value=6, max_value=20, value=6, step=1,
+                                help="Extra rows above zones are auto-filled with filler tiles"))
 
     with st.spinner("Solving…"):
         result = solve(W, H, seed)
