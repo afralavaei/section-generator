@@ -26,6 +26,9 @@ ZONE_COLORS = {
 # ports     : dict edge → [(x,y)] — boundary midpoints where lines exit the module
 
 MODULES: Dict[str, dict] = {
+
+    #-------Left_Chair_Modules------------------------------------------------------
+
    "chair_left_h2_v1": {
         "id": "chair_left_h2_v1",
         "w": 2, "h": 2,
@@ -164,7 +167,55 @@ MODULES: Dict[str, dict] = {
             "right":  [(2.0, 0.5)],
         },
     },
-        
+
+    #-------Right_Chair_Modules------------------------------------------------------
+
+      "chair_right_h2_v1": {
+        "id": "chair_right_h2_v1",
+        "w": 2, "h": 2,
+        "zone": "chair_right",
+        "segments": [
+            [(1.5, 2.0), (1.5, 1.5)],                           # stem
+            [(1.5, 1.5), (0.5, 1.5), (0.5, 0.5),
+             (1.5, 0.5), (1.5, 1.5)],                           # seat rectangle (closed)
+            [(0.5, 0.5), (0.0, 0.5)],                           # leg → left port
+        ],
+        "ports": {
+            "top":    [(1.5, 2.0)],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [],
+        },
+    },
+       "chair_right_h2_v2": {
+        "id": "chair_right_h2_v2",
+        "w": 2, "h": 2,
+        "zone": "chair_right",
+        "segments": [
+            [(1.5, 2.0), (1.5, 1.5), (0.5, 1.5), (0.5, 0.5), (0.0, 0.5)],
+        ],
+        "ports": {
+            "top":    [(1.5, 2.0)],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [],
+        },
+    },
+     "chair_right_h2_v3": {
+        "id": "chair_right_h2_v3",
+        "w": 2, "h": 2,
+        "zone": "chair_right",
+        "segments": [
+            [(1.5, 2.0), (1.5, 1.5), (0.5, 1.5), (1.0, 0.5), (0.0, 0.5)],
+        ],
+        "ports": {
+            "top":    [(1.5, 2.0)],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [],
+        },
+    },
+    
     "chair_right_h3_v1": {
         "id": "chair_right_h3_v1",
         "w": 2, "h": 3,
@@ -182,21 +233,98 @@ MODULES: Dict[str, dict] = {
             "right":  [],
         },
     },
-    "chair_right_h2_v1": {
-        "id": "chair_right_h2_v1",
-        "w": 2, "h": 2,
+    "chair_right_h3_v2": {
+        "id": "chair_right_h3_v2",
+        "w": 2, "h": 3,
         "zone": "chair_right",
         "segments": [
-            [(1.5, 2.0), (1.5, 1.5)],                           # stem
-            [(1.5, 1.5), (0.5, 1.5), (0.5, 0.5),
-             (1.5, 0.5), (1.5, 1.5)],                           # seat rectangle (closed)
+            [(1.5, 3.0), (1.5, 2.0)],                           # stem
+            [(1.5, 2.0), (0.5, 2.0), (0.5, 0.5),
+             (1.5, 0.5), (1.5, 2.0)],                           # seat rectangle (closed)
             [(0.5, 0.5), (0.0, 0.5)],                           # leg → left port
         ],
         "ports": {
-            "top":    [(1.5, 2.0)],
+            "top":    [(1.5, 3.0)],
             "bottom": [],
             "left":   [(0.0, 0.5)],
             "right":  [],
+        },
+    },
+    "chair_right_h3_v3": {
+        "id": "chair_right_h3_v3",
+        "w": 2, "h": 3,
+        "zone": "chair_right",
+        "segments": [
+            [(1.5, 3.0), (1.5, 2.5), (0.5, 2.5), (0.5, 0.5), (0.0, 0.5)],
+        ],
+        "ports": {
+            "top":    [(1.5, 3.0)],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [],
+        },
+    },
+    "chair_right_h3_v4": {
+        "id": "chair_right_h3_v4",
+        "w": 2, "h": 3,
+        "zone": "chair_right",
+        "segments": [
+            [(1.5, 3.0), (1.5, 2.0), (0.5, 2.0), (0.5, 0.5), (0.0, 0.5)],
+        ],
+        "ports": {
+            "top":    [(1.5, 3.0)],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [],
+        },
+    },
+     "chair_right_h3_v5": {
+        "id": "chair_right_h3_v5",
+        "w": 2, "h": 3,
+        "zone": "chair_right",
+        "segments": [
+            [(1.5, 3.0), (1.5, 2.5), (0.5, 2.5), (1.0, 0.5), (0.0, 0.5)],
+        ],
+        "ports": {
+            "top":    [(1.5, 3.0)],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [],
+        },
+    },
+    "chair_right_h3_v6": {
+        "id": "chair_right_h3_v6",
+        "w": 2, "h": 3,
+        "zone": "chair_right",
+        "segments": [
+            [(1.5, 3.0), (1.5, 2.0), (0.5, 2.0), (1.0, 0.5), (0.0, 0.5)],
+        ],
+        "ports": {
+            "top":    [(1.5, 3.0)],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [],
+        },
+    },
+    
+    #-------Table_Modules------------------------------------------------------
+
+    "table_h2_v1": {
+        "id": "table_h2_v1",
+        "w": 2, "h": 2,
+        "zone": "table",
+        "segments": [
+            [(0.5, 1.5), (1.5, 1.5)],   # top horizontal bar
+            [(0.5, 1.5), (1.0, 0.5)],   # left diagonal to tip
+            [(1.5, 1.5), (1.0, 0.5)],   # right diagonal to tip
+            [(1.0, 0.5), (0.0, 0.5)],   # left leg → left port
+            [(1.0, 0.5), (2.0, 0.5)],   # right leg → right port
+        ],
+        "ports": {
+            "top":    [],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [(2.0, 0.5)],
         },
     },
     "table_h3_v1": {
@@ -217,6 +345,9 @@ MODULES: Dict[str, dict] = {
             "right":  [(2.0, 0.5)],
         },
     },
+
+        #-------Shelf_Modules------------------------------------------------------
+
     "shelf_h3_v1": {
         "id": "shelf_h3_v1",
         "w": 6, "h": 3,
@@ -308,8 +439,8 @@ ZONES = [
         "y_rule":  ["first 3", "first 2"],
         "modules": [
             "chair_left_h3_v1", "chair_left_h3_v2", "chair_left_h3_v3",
-            "chair_left_h3_v4", "chair_left_h3_v5",
-            "chair_left_h2_v1", "chair_left_h2_v2",
+            "chair_left_h3_v4", "chair_left_h3_v5", "chair_left_h3_v6",
+            "chair_left_h2_v1", "chair_left_h2_v2", "chair_left_h2_v3",
         ],
     },
     {
@@ -322,7 +453,11 @@ ZONES = [
         "id":      "chair_right",
         "x_rule":  ["last 2"],
         "y_rule":  ["first 3", "first 2"],
-        "modules": ["chair_right_h3_v1", "chair_right_h2_v1"],
+        "modules": [
+            "chair_right_h3_v1", "chair_right_h3_v2", "chair_right_h3_v3",
+            "chair_right_h3_v4", "chair_right_h3_v5", "chair_right_h3_v6",
+            "chair_right_h2_v1", "chair_right_h2_v2", "chair_right_h2_v3",
+        ],
     },
     {
         "id":      "shelf",
@@ -695,7 +830,7 @@ with tab_sec:
     st.caption("Prototype: W=6, H=6.  Solver places chair-left, table, chair-right, shelf.")
     c1, c2, c3 = st.columns(3)
     with c1:
-        seed = int(st.number_input("Seed", min_value=0, max_value=1_000_000, value=42, step=1))
+        seed = int(st.slider("Seed", min_value=0, max_value=1_000_000, value=42, step=1))
     with c2:
         W = int(st.number_input("Width W", min_value=6, max_value=20, value=6, step=1,
                                 help="Shelf auto-scales to full width; gaps between zones filled automatically"))
