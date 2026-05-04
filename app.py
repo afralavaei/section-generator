@@ -327,6 +327,97 @@ MODULES: Dict[str, dict] = {
             "right":  [(2.0, 0.5)],
         },
     },
+     "table_h2_v2": {
+        "id": "table_h2_v2",
+        "w": 2, "h": 2,
+        "zone": "table",
+        "segments": [
+            [(0.5, 2.0), (1.5, 2.0)],   # top horizontal bar
+            [(0.5, 2.0), (1.0, 0.5)],   # left diagonal to tip
+            [(1.5, 2.0), (1.0, 0.5)],   # right diagonal to tip
+            [(1.0, 0.5), (0.0, 0.5)],   # left leg → left port
+            [(1.0, 0.5), (2.0, 0.5)],   # right leg → right port
+        ],
+        "ports": {
+            "top":    [],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [(2.0, 0.5)],
+        },
+    },
+    "table_h2_v3": {
+        "id": "table_h2_v3",
+        "w": 2, "h": 2,
+        "zone": "table",
+        "segments": [
+            [(0.5, 1.5), (1.5, 1.5)],   # top horizontal bar
+            [(0.5, 1.5), (0.5, 0.5)],   
+            [(1.5, 1.5), (1.5, 0.5)],   
+            [(1.0, 0.5), (0.0, 0.5)],   # left leg → left port
+            [(1.0, 0.5), (2.0, 0.5)],   # right leg → right port
+        ],
+        "ports": {
+            "top":    [],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [(2.0, 0.5)],
+        },
+    },
+     "table_h2_v4": {
+        "id": "table_h2_v4",
+        "w": 2, "h": 2,
+        "zone": "table",
+        "segments": [
+            [(0.5, 2.0), (1.5, 2.0)],   # top horizontal bar
+            [(0.5, 2.0), (0.5, 0.5)],   
+            [(1.5, 2.0), (1.5, 0.5)],   
+            [(1.0, 0.5), (0.0, 0.5)],   # left leg → left port
+            [(1.0, 0.5), (2.0, 0.5)],   # right leg → right port
+        ],
+        "ports": {
+            "top":    [],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [(2.0, 0.5)],
+        },
+    },
+    "table_h2_v5": {
+        "id": "table_h2_v5",
+        "w": 2, "h": 2,
+        "zone": "table",
+        "segments": [
+            [(0.0, 1.5), (2.0, 1.5)],   # top horizontal bar
+            [(0.0, 1.5), (0.5, 0.5)],   # left diagonal to tip
+            [(2.0, 1.5), (1.5, 0.5)],   # right diagonal to tip
+            [(1.0, 0.5), (0.0, 0.5)],   # left leg → left port
+            [(1.0, 0.5), (2.0, 0.5)],   # right leg → right port
+        ],
+        "ports": {
+            "top":    [],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [(2.0, 0.5)],
+        },
+    },
+    "table_h2_v6": {
+        "id": "table_h2_v6",
+        "w": 2, "h": 2,
+        "zone": "table",
+        "segments": [
+            [(0.0, 2.0), (2.0, 2.0)],   # top horizontal bar
+            [(0.0, 2.0), (0.5, 0.5)],   # left diagonal to tip
+            [(2.0, 2.0), (1.5, 0.5)],   # right diagonal to tip
+            [(1.0, 0.5), (0.0, 0.5)],   # left leg → left port
+            [(1.0, 0.5), (2.0, 0.5)],   # right leg → right port
+        ],
+        "ports": {
+            "top":    [],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [(2.0, 0.5)],
+        },
+    },
+    
     "table_h3_v1": {
         "id": "table_h3_v1",
         "w": 2, "h": 3,
@@ -335,6 +426,42 @@ MODULES: Dict[str, dict] = {
             [(0.5, 2.5), (1.5, 2.5)],   # top horizontal bar
             [(0.5, 2.5), (1.0, 0.5)],   # left diagonal to tip
             [(1.5, 2.5), (1.0, 0.5)],   # right diagonal to tip
+            [(1.0, 0.5), (0.0, 0.5)],   # left leg → left port
+            [(1.0, 0.5), (2.0, 0.5)],   # right leg → right port
+        ],
+        "ports": {
+            "top":    [],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [(2.0, 0.5)],
+        },
+    },
+     "table_h3_v2": {
+        "id": "table_h3_v2",
+        "w": 2, "h": 3,
+        "zone": "table",
+        "segments": [
+            [(0.0, 2.5), (2.0, 2.5)],   # top horizontal bar
+            [(0.0, 2.5), (0.5, 0.5)],   # left diagonal to tip
+            [(2.0, 2.5), (1.5, 0.5)],   # right diagonal to tip
+            [(1.0, 0.5), (0.0, 0.5)],   # left leg → left port
+            [(1.0, 0.5), (2.0, 0.5)],   # right leg → right port
+        ],
+        "ports": {
+            "top":    [],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [(2.0, 0.5)],
+        },
+    },
+    "table_h3_v3": {
+        "id": "table_h3_v3",
+        "w": 2, "h": 3,
+        "zone": "table",
+        "segments": [
+            [(0.5, 2.5), (1.5, 2.5)],   # top horizontal bar
+            [(0.5, 2.5), (0.5, 0.5)],   
+            [(1.5, 2.5), (1.5, 0.5)],   
             [(1.0, 0.5), (0.0, 0.5)],   # left leg → left port
             [(1.0, 0.5), (2.0, 0.5)],   # right leg → right port
         ],
