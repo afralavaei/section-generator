@@ -476,20 +476,85 @@ MODULES: Dict[str, dict] = {
         #-------Shelf_Modules------------------------------------------------------
 
     "shelf_h3_v1": {
-        "id": "shelf_h3_v1",
-        "w": 6, "h": 3,
-        "zone": "shelf",
-        "segments": [
-            [(0.5, 0.0), (0.5, 2.5)],   # left stem up
-            [(5.5, 0.0), (5.5, 2.5)],   # right stem up
-            [(0.5, 2.5), (5.5, 2.5)],   # horizontal bar
+        "id": "shelf_h3_v1", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 2.5)],
+            [(W-0.5, 0.0), (W-0.5, 2.5)],
+            [(0.5, 2.5), (W-0.5, 2.5)],
         ],
-        "ports": {
-            "top":    [],
-            "bottom": [(0.5, 0.0), (5.5, 0.0)],
-            "left":   [],
-            "right":  [],
-        },
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W-0.5, 0.0)], "left": [], "right": []},
+    },
+    "shelf_h3_v2": {
+        "id": "shelf_h3_v2", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 2.5)],
+            [(W-0.5, 0.0), (W-0.5, 2.5)],
+            [(0.5, 2.5), (W-0.5, 2.5)],
+            [(0.5, 1.5), (W-0.5, 1.5)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W-0.5, 0.0)], "left": [], "right": []},
+    },
+    "shelf_h3_v3": {
+        "id": "shelf_h3_v3", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 1.0), (0.5, 2.5)],
+            [(W-0.5, 0.0), (W-0.5, 1.0), (W-0.5, 2.5)],
+            [(0.5, 1.0), (W/2, 1.0), (W-0.5, 1.0)],
+            [(0.5, 2.5), (W/2, 2.5), (W-0.5, 2.5)],
+            [(W/2, 1.0), (W/2, 2.5)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W-0.5, 0.0)], "left": [], "right": []},
+    },
+    "shelf_h3_v4": {
+        "id": "shelf_h3_v4", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 2.5)],
+            [(W-0.5, 0.0), (W-0.5, 1.5)],
+            [(0.5, 2.5), (W-0.5, 1.5)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W-0.5, 0.0)], "left": [], "right": []},
+    },
+    "shelf_h3_v5": {
+        "id": "shelf_h3_v5", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 1.5)],
+            [(W-0.5, 0.0), (W-0.5, 2.5)],
+            [(0.5, 1.5), (W-0.5, 2.5)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W-0.5, 0.0)], "left": [], "right": []},
+    },
+    "shelf_h3_v6": {
+        "id": "shelf_h3_v6", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 1.5), (0.5, 2.5)],
+            [(W-0.5, 0.0), (W-0.5, 1.5), (W-0.5, 2.5)],
+            [(0.5, 1.5), (W-0.5, 1.5)],
+            [(0.5, 2.5), (W-0.5, 2.5)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W-0.5, 0.0)], "left": [], "right": []},
+    },
+    "shelf_h3_v7": {
+        "id": "shelf_h3_v7", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        # left small compartment + right section with evenly-spaced dividers
+        # right rect traverses all divider x-positions as waypoints so degree check passes
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 1.5)],
+            [(W-0.5, 0.0), (W-0.5, 1.5)],
+            [(0.5, 1.5), (1.5, 1.5), (1.5, 2.5), (0.5, 2.5), (0.5, 1.5)],
+            [(1.5+i, 1.5) for i in range(W-1)] + [(W-0.5-i, 2.5) for i in range(W-1)] + [(1.5, 1.5)],
+        ] + [[(1.5+i, 1.5), (1.5+i, 2.5)] for i in range(1, W-2)],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W-0.5, 0.0)], "left": [], "right": []},
+    },
+    "shelf_h3_v8": {
+        "id": "shelf_h3_v8", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        # frame (short stems + closed rectangle) with diagonal hatching lines
+        # frame traverses all hatch x-positions as waypoints so degree check passes
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 1.0)],
+            [(W-0.5, 0.0), (W-0.5, 1.0)],
+            [(0.5+i, 1.0) for i in range(W)] + [(W-0.5-i, 2.5) for i in range(W)] + [(0.5, 1.0)],
+        ] + [[(0.5+i, 1.0), (1.5+i, 2.5)] for i in range(1, W-2)],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W-0.5, 0.0)], "left": [], "right": []},
     },
 
     # ── 1×1 filler tiles ──────────────────────────────────────────────────────
@@ -573,8 +638,9 @@ ZONES = [
     {
         "id":      "table",
         "x_rule":  ["middle 2"],
-        "y_rule":  ["first 3"],
-        "modules": ["table_h3_v1"],
+        "y_rule":  ["first 3", "first 2"],
+        "modules": ["table_h3_v1", "table_h3_v2", "table_h3_v3",
+                    "table_h2_v1", "table_h2_v2", "table_h2_v3", "table_h2_v4", "table_h2_v5", "table_h2_v6"],
     },
     {
         "id":      "chair_right",
@@ -590,7 +656,8 @@ ZONES = [
         "id":      "shelf",
         "x_rule":  ["full"],     # spans full section width — module created at solve time
         "y_rule":  ["last 3"],
-        "modules": [],           # populated dynamically inside solve()
+        "modules": ["shelf_h3_v1", "shelf_h3_v2", "shelf_h3_v3", "shelf_h3_v4",
+                     "shelf_h3_v5", "shelf_h3_v6", "shelf_h3_v7", "shelf_h3_v8",],           # populated dynamically inside solve()
     },
 ]
 
@@ -630,10 +697,11 @@ def resolve_zone_position(zone: dict, W: int, H: int, x_rule: str, y_rule: str) 
 # ── Adjacency checker ─────────────────────────────────────────────────────────
 
 def _ports_in_range(mod: dict, edge: str, x_off: float, y_off: float,
-                    lo: float, hi: float) -> frozenset:
+                    lo: float, hi: float, w: int = None) -> frozenset:
     """Return section-coord ports on `edge` whose position along the edge is in [lo, hi]."""
     pts = set()
-    for px, py in mod["ports"][edge]:
+    ports = get_ports(mod, w if w is not None else mod["w"])
+    for px, py in ports[edge]:
         sx, sy = px + x_off, py + y_off
         along = sx if edge in ("top", "bottom") else sy
         if lo - EPS <= along <= hi + EPS:
@@ -648,45 +716,47 @@ def check_adjacency(placed: List[dict]) -> bool:
     """
     for i, a in enumerate(placed):
         ma = MODULES[a["module_id"]]
+        aw, ah = a["w"], a["h"]
         for b in placed[i + 1:]:
             mb = MODULES[b["module_id"]]
+            bw, bh = b["w"], b["h"]
             ax0, ay0 = a["x_off"], a["y_off"]
             bx0, by0 = b["x_off"], b["y_off"]
 
             # A's right edge coincides with B's left edge
-            if abs((ax0 + ma["w"]) - bx0) < EPS:
+            if abs((ax0 + aw) - bx0) < EPS:
                 y_lo = max(ay0, by0)
-                y_hi = min(ay0 + ma["h"], by0 + mb["h"])
+                y_hi = min(ay0 + ah, by0 + bh)
                 if y_hi > y_lo:
-                    if (_ports_in_range(ma, "right", ax0, ay0, y_lo, y_hi) !=
-                            _ports_in_range(mb, "left",  bx0, by0, y_lo, y_hi)):
+                    if (_ports_in_range(ma, "right", ax0, ay0, y_lo, y_hi, aw) !=
+                            _ports_in_range(mb, "left",  bx0, by0, y_lo, y_hi, bw)):
                         return False
 
             # B's right edge coincides with A's left edge
-            if abs((bx0 + mb["w"]) - ax0) < EPS:
+            if abs((bx0 + bw) - ax0) < EPS:
                 y_lo = max(ay0, by0)
-                y_hi = min(ay0 + ma["h"], by0 + mb["h"])
+                y_hi = min(ay0 + ah, by0 + bh)
                 if y_hi > y_lo:
-                    if (_ports_in_range(mb, "right", bx0, by0, y_lo, y_hi) !=
-                            _ports_in_range(ma, "left",  ax0, ay0, y_lo, y_hi)):
+                    if (_ports_in_range(mb, "right", bx0, by0, y_lo, y_hi, bw) !=
+                            _ports_in_range(ma, "left",  ax0, ay0, y_lo, y_hi, aw)):
                         return False
 
             # A's top edge coincides with B's bottom edge
-            if abs((ay0 + ma["h"]) - by0) < EPS:
+            if abs((ay0 + ah) - by0) < EPS:
                 x_lo = max(ax0, bx0)
-                x_hi = min(ax0 + ma["w"], bx0 + mb["w"])
+                x_hi = min(ax0 + aw, bx0 + bw)
                 if x_hi > x_lo:
-                    if (_ports_in_range(ma, "top",    ax0, ay0, x_lo, x_hi) !=
-                            _ports_in_range(mb, "bottom", bx0, by0, x_lo, x_hi)):
+                    if (_ports_in_range(ma, "top",    ax0, ay0, x_lo, x_hi, aw) !=
+                            _ports_in_range(mb, "bottom", bx0, by0, x_lo, x_hi, bw)):
                         return False
 
             # B's top edge coincides with A's bottom edge
-            if abs((by0 + mb["h"]) - ay0) < EPS:
+            if abs((by0 + bh) - ay0) < EPS:
                 x_lo = max(ax0, bx0)
-                x_hi = min(ax0 + ma["w"], bx0 + mb["w"])
+                x_hi = min(ax0 + aw, bx0 + bw)
                 if x_hi > x_lo:
-                    if (_ports_in_range(mb, "top",    bx0, by0, x_lo, x_hi) !=
-                            _ports_in_range(ma, "bottom", ax0, ay0, x_lo, x_hi)):
+                    if (_ports_in_range(mb, "top",    bx0, by0, x_lo, x_hi, bw) !=
+                            _ports_in_range(ma, "bottom", ax0, ay0, x_lo, x_hi, aw)):
                         return False
 
     return True
@@ -704,7 +774,7 @@ def check_circuit(placed: List[dict]) -> bool:
     for p in placed:
         mod = MODULES[p["module_id"]]
         xo, yo = p["x_off"], p["y_off"]
-        for seg in mod["segments"]:
+        for seg in get_segments(mod, p["w"]):
             pts = [(round(x + xo, 9), round(y + yo, 9)) for x, y in seg]
             for k in range(len(pts) - 1):
                 degree[pts[k]]     += 1
@@ -712,15 +782,28 @@ def check_circuit(placed: List[dict]) -> bool:
 
     return all(d != 1 for d in degree.values())
 
+# ── Parametric segment / port resolvers ──────────────────────────────────────
+
+def get_segments(mod: dict, w: int) -> List:
+    if "segments_fn" in mod:
+        return mod["segments_fn"](w)
+    return mod["segments"]
+
+
+def get_ports(mod: dict, w: int) -> dict:
+    if "ports_fn" in mod:
+        return mod["ports_fn"](w)
+    return mod["ports"]
+
+
 # ── Solver ────────────────────────────────────────────────────────────────────
 
 def _gap_cells(placed_so_far: List[dict], W: int, H: int) -> List[Tuple[int, int]]:
     """Return all (col, row) cells in the W×H grid not covered by any placed module."""
     covered: set = set()
     for p in placed_so_far:
-        m = MODULES[p["module_id"]]
-        for col in range(int(p["x_off"]), int(p["x_off"]) + m["w"]):
-            for row in range(int(p["y_off"]), int(p["y_off"]) + m["h"]):
+        for col in range(int(p["x_off"]), int(p["x_off"]) + p["w"]):
+            for row in range(int(p["y_off"]), int(p["y_off"]) + p["h"]):
                 covered.add((col, row))
     return [(col, row) for row in range(H) for col in range(W)
             if (col, row) not in covered]
@@ -736,40 +819,17 @@ def solve(W: int, H: int, seed: int) -> Optional[List[dict]]:
     rng = random.Random(seed)
     filler_ids = [mid for mid, m in MODULES.items() if m["zone"] == "filler"]
 
-    # Ensure a shelf module exists for this exact width
-    shelf_id = f"shelf_h3_w{W}_v1"
-    if shelf_id not in MODULES:
-        MODULES[shelf_id] = {
-            "id": shelf_id, "w": W, "h": 3, "zone": "shelf",
-            "segments": [
-                [(0.5, 0.0), (0.5, 2.5)],
-                [(W - 0.5, 0.0), (W - 0.5, 2.5)],
-                [(0.5, 2.5), (W - 0.5, 2.5)],
-            ],
-            "ports": {
-                "top":    [],
-                "bottom": [(0.5, 0.0), (W - 0.5, 0.0)],
-                "left":   [],
-                "right":  [],
-            },
-        }
-
-    # Build a local zones list with the shelf pointing at the right module
-    zones = [
-        z if z["id"] != "shelf" else {**z, "modules": [shelf_id]}
-        for z in ZONES
-    ]
-
     # Phase 1 candidates — one option list per named zone
     reg_candidates: List[List[dict]] = []
-    for zone in zones:
+    for zone in ZONES:
         options: List[dict] = []
         for xr in zone["x_rule"]:
             for yr in zone["y_rule"]:
                 res = resolve_zone_position(zone, W, H, xr, yr)
                 w, h = res["w"], res["h"]
                 for mid in zone["modules"]:
-                    if MODULES[mid]["w"] == w and MODULES[mid]["h"] == h:
+                    m = MODULES[mid]
+                    if (m.get("scalable") or m["w"] == w) and m["h"] == h:
                         options.append({
                             "module_id": mid,
                             "x_off": res["x_off"],
@@ -836,8 +896,10 @@ def _draw_grid(ax, ox: float, oy: float, w: int, h: int) -> None:
 
 
 def _draw_module(ax, mod: dict, x_off: float, y_off: float,
-                 show_grid: bool = True, show_ports: bool = True) -> None:
-    w, h = mod["w"], mod["h"]
+                 show_grid: bool = True, show_ports: bool = True,
+                 placed_w: int = None) -> None:
+    w = placed_w if placed_w is not None else mod["w"]
+    h = mod["h"]
 
     if show_grid:
         fc = ZONE_COLORS.get(mod.get("zone", ""), "#ffffff")
@@ -847,14 +909,14 @@ def _draw_module(ax, mod: dict, x_off: float, y_off: float,
         ))
         _draw_grid(ax, x_off, y_off, w, h)
 
-    for seg in mod["segments"]:
+    for seg in get_segments(mod, w):
         xs = [p[0] + x_off for p in seg]
         ys = [p[1] + y_off for p in seg]
         ax.plot(xs, ys, color=LINE_COLOR, lw=2.2, zorder=3,
                 solid_capstyle="round", solid_joinstyle="round")
 
     if show_ports:
-        for pts in mod["ports"].values():
+        for pts in get_ports(mod, w).values():
             for px, py in pts:
                 ax.plot(px + x_off, py + y_off, "o",
                         color=PORT_COLOR, ms=6, zorder=4)
@@ -867,8 +929,8 @@ def plot_section(placed: List[dict], W: int, H: int) -> plt.Figure:
 
     for p in placed:
         mod = MODULES[p["module_id"]]
-        _draw_module(ax, mod, p["x_off"], p["y_off"])
-        cx = p["x_off"] + mod["w"] / 2
+        _draw_module(ax, mod, p["x_off"], p["y_off"], placed_w=p["w"])
+        cx = p["x_off"] + p["w"] / 2
         cy = p["y_off"] + mod["h"] / 2
         ax.text(cx, cy, mod["zone"].replace("_", "\n"),
                 ha="center", va="center", fontsize=7, color="#666666", alpha=0.7)
