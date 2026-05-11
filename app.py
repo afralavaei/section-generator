@@ -393,14 +393,12 @@ MODULES: Dict[str, dict] = {
         "id": "table_h2_v3",
         "w": 2, "h": 2,
         "zone": "table",
-        "description": "Table, height 2. Rectangular frame with two straight vertical legs and a mid-height bar.",
+        "description": "Table, height 2. Rectangular frame with two straight vertical legs, each foot running to the side port.",
         "tags": ["rectilinear", "h2"],
         "segments": [
-            [(0.5, 1.5), (1.5, 1.5)],   # top horizontal bar
-            [(0.5, 1.5), (0.5, 0.5)],
-            [(1.5, 1.5), (1.5, 0.5)],
-            [(1.0, 0.5), (0.0, 0.5)],   # left leg → left port
-            [(1.0, 0.5), (2.0, 0.5)],   # right leg → right port
+            [(0.5, 1.5), (1.5, 1.5)],            # top horizontal bar
+            [(0.5, 1.5), (0.5, 0.5), (0.0, 0.5)],  # left leg → left port
+            [(1.5, 1.5), (1.5, 0.5), (2.0, 0.5)],  # right leg → right port
         ],
         "ports": {
             "top":    [],
@@ -413,14 +411,12 @@ MODULES: Dict[str, dict] = {
         "id": "table_h2_v4",
         "w": 2, "h": 2,
         "zone": "table",
-        "description": "Table, height 2. Tall rectangular frame with the top bar at maximum height.",
+        "description": "Table, height 2. Tall rectangular frame with the top bar at maximum height, legs run to side ports.",
         "tags": ["rectilinear", "tall-bar", "h2"],
         "segments": [
-            [(0.5, 2.0), (1.5, 2.0)],   # top horizontal bar
-            [(0.5, 2.0), (0.5, 0.5)],
-            [(1.5, 2.0), (1.5, 0.5)],
-            [(1.0, 0.5), (0.0, 0.5)],   # left leg → left port
-            [(1.0, 0.5), (2.0, 0.5)],   # right leg → right port
+            [(0.5, 2.0), (1.5, 2.0)],            # top horizontal bar
+            [(0.5, 2.0), (0.5, 0.5), (0.0, 0.5)],  # left leg → left port
+            [(1.5, 2.0), (1.5, 0.5), (2.0, 0.5)],  # right leg → right port
         ],
         "ports": {
             "top":    [],
@@ -433,14 +429,12 @@ MODULES: Dict[str, dict] = {
         "id": "table_h2_v5",
         "w": 2, "h": 2,
         "zone": "table",
-        "description": "Table, height 2. Full-width top bar with outward-leaning diagonal legs.",
+        "description": "Table, height 2. Full-width top bar with inward-diagonal legs that splay back out to the side ports.",
         "tags": ["diagonal", "wide-top", "h2"],
         "segments": [
-            [(0.0, 1.5), (2.0, 1.5)],   # top horizontal bar
-            [(0.0, 1.5), (0.5, 0.5)],   # left diagonal to tip
-            [(2.0, 1.5), (1.5, 0.5)],   # right diagonal to tip
-            [(1.0, 0.5), (0.0, 0.5)],   # left leg → left port
-            [(1.0, 0.5), (2.0, 0.5)],   # right leg → right port
+            [(0.0, 1.5), (2.0, 1.5)],                # top horizontal bar
+            [(0.0, 1.5), (0.5, 0.5), (0.0, 0.5)],    # left diagonal leg → left port
+            [(2.0, 1.5), (1.5, 0.5), (2.0, 0.5)],    # right diagonal leg → right port
         ],
         "ports": {
             "top":    [],
@@ -453,14 +447,12 @@ MODULES: Dict[str, dict] = {
         "id": "table_h2_v6",
         "w": 2, "h": 2,
         "zone": "table",
-        "description": "Table, height 2. Full-width top bar at maximum height with outward diagonal legs.",
+        "description": "Table, height 2. Full-width top bar at maximum height with diagonal legs splaying to side ports.",
         "tags": ["diagonal", "wide-top", "tall-bar", "h2"],
         "segments": [
-            [(0.0, 2.0), (2.0, 2.0)],   # top horizontal bar
-            [(0.0, 2.0), (0.5, 0.5)],   # left diagonal to tip
-            [(2.0, 2.0), (1.5, 0.5)],   # right diagonal to tip
-            [(1.0, 0.5), (0.0, 0.5)],   # left leg → left port
-            [(1.0, 0.5), (2.0, 0.5)],   # right leg → right port
+            [(0.0, 2.0), (2.0, 2.0)],                # top horizontal bar
+            [(0.0, 2.0), (0.5, 0.5), (0.0, 0.5)],    # left diagonal leg → left port
+            [(2.0, 2.0), (1.5, 0.5), (2.0, 0.5)],    # right diagonal leg → right port
         ],
         "ports": {
             "top":    [],
@@ -494,14 +486,12 @@ MODULES: Dict[str, dict] = {
         "id": "table_h3_v2",
         "w": 2, "h": 3,
         "zone": "table",
-        "description": "Table, height 3. Full-width top bar with outward diagonal legs — wide, triangular profile.",
+        "description": "Table, height 3. Full-width top bar with diagonal legs splaying to side ports.",
         "tags": ["diagonal", "wide-top", "h3"],
         "segments": [
-            [(0.0, 2.5), (2.0, 2.5)],   # top horizontal bar
-            [(0.0, 2.5), (0.5, 0.5)],   # left diagonal to tip
-            [(2.0, 2.5), (1.5, 0.5)],   # right diagonal to tip
-            [(1.0, 0.5), (0.0, 0.5)],   # left leg → left port
-            [(1.0, 0.5), (2.0, 0.5)],   # right leg → right port
+            [(0.0, 2.5), (2.0, 2.5)],                # top horizontal bar
+            [(0.0, 2.5), (0.5, 0.5), (0.0, 0.5)],    # left diagonal leg → left port
+            [(2.0, 2.5), (1.5, 0.5), (2.0, 0.5)],    # right diagonal leg → right port
         ],
         "ports": {
             "top":    [],
@@ -514,14 +504,12 @@ MODULES: Dict[str, dict] = {
         "id": "table_h3_v3",
         "w": 2, "h": 3,
         "zone": "table",
-        "description": "Table, height 3. Tall rectangular frame with vertical legs and a high horizontal bar.",
+        "description": "Table, height 3. Tall rectangular frame with vertical legs, each foot running to the side port.",
         "tags": ["rectilinear", "h3"],
         "segments": [
-            [(0.5, 2.5), (1.5, 2.5)],   # top horizontal bar
-            [(0.5, 2.5), (0.5, 0.5)],
-            [(1.5, 2.5), (1.5, 0.5)],
-            [(1.0, 0.5), (0.0, 0.5)],   # left leg → left port
-            [(1.0, 0.5), (2.0, 0.5)],   # right leg → right port
+            [(0.5, 2.5), (1.5, 2.5)],            # top horizontal bar
+            [(0.5, 2.5), (0.5, 0.5), (0.0, 0.5)],  # left leg → left port
+            [(1.5, 2.5), (1.5, 0.5), (2.0, 0.5)],  # right leg → right port
         ],
         "ports": {
             "top":    [],
@@ -631,6 +619,80 @@ MODULES: Dict[str, dict] = {
         "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W-0.5, 0.0)], "left": [], "right": []},
     },
 
+    # ── Narrow-mode shelf modules ─────────────────────────────────────────────
+    # Used when the corridor sits directly beside the table (no opposite chair).
+    # Only ONE post reaches y=0 — the post above the chair — so there is no bottom
+    # port conflict with the table (which has no top port).
+    # The corr stub at y=2.5 is added by _build_corridor_variants() as usual.
+
+    # shelf_narrow_r: chair_left on the left → left post only (for corridor_right narrow)
+    "shelf_narrow_r_v1": {
+        "id": "shelf_narrow_r_v1", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        "description": "Narrow-mode shelf, left post only. Used when the table faces the corridor directly on the right.",
+        "tags": ["shelf", "narrow", "single-post", "right-corridor"],
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 2.5)],
+            [(0.5, 2.5), (W - 0.5, 2.5)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0)], "left": [], "right": []},
+    },
+    "shelf_narrow_r_v2": {
+        "id": "shelf_narrow_r_v2", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        "description": "Narrow-mode shelf, left post with a mid-level shelf line.",
+        "tags": ["shelf", "narrow", "two-level", "right-corridor"],
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 2.5)],
+            [(0.5, 2.5), (W - 0.5, 2.5)],
+            [(0.5, 1.5), (W - 0.5, 1.5)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0)], "left": [], "right": []},
+    },
+    "shelf_narrow_r_v3": {
+        "id": "shelf_narrow_r_v3", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        "description": "Narrow-mode shelf, left post with a diagonal brace to the top-right corner.",
+        "tags": ["shelf", "narrow", "diagonal", "right-corridor"],
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 2.5)],
+            [(0.5, 2.5), (W - 0.5, 2.5)],
+            [(0.5, 1.0), (W - 0.5, 2.5)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0)], "left": [], "right": []},
+    },
+
+    # shelf_narrow_l: chair_right on the right → right post only (for corridor_left narrow)
+    "shelf_narrow_l_v1": {
+        "id": "shelf_narrow_l_v1", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        "description": "Narrow-mode shelf, right post only. Used when the table faces the corridor directly on the left.",
+        "tags": ["shelf", "narrow", "single-post", "left-corridor"],
+        "segments_fn": lambda W: [
+            [(W - 0.5, 0.0), (W - 0.5, 2.5)],
+            [(0.5, 2.5), (W - 0.5, 2.5)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(W - 0.5, 0.0)], "left": [], "right": []},
+    },
+    "shelf_narrow_l_v2": {
+        "id": "shelf_narrow_l_v2", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        "description": "Narrow-mode shelf, right post with a mid-level shelf line.",
+        "tags": ["shelf", "narrow", "two-level", "left-corridor"],
+        "segments_fn": lambda W: [
+            [(W - 0.5, 0.0), (W - 0.5, 2.5)],
+            [(0.5, 2.5), (W - 0.5, 2.5)],
+            [(0.5, 1.5), (W - 0.5, 1.5)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(W - 0.5, 0.0)], "left": [], "right": []},
+    },
+    "shelf_narrow_l_v3": {
+        "id": "shelf_narrow_l_v3", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        "description": "Narrow-mode shelf, right post with a diagonal brace to the top-left corner.",
+        "tags": ["shelf", "narrow", "diagonal", "left-corridor"],
+        "segments_fn": lambda W: [
+            [(W - 0.5, 0.0), (W - 0.5, 2.5)],
+            [(0.5, 2.5), (W - 0.5, 2.5)],
+            [(W - 0.5, 1.0), (0.5, 2.5)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(W - 0.5, 0.0)], "left": [], "right": []},
+    },
+
     # ── Corridor modules ──────────────────────────────────────────────────────
     # h_scalable: spans full section height H (resolved at solve time via h_segments_fn / h_ports_fn).
     # Inner-face ports connect to the corridor-adjacent chair and shelf.
@@ -638,19 +700,19 @@ MODULES: Dict[str, dict] = {
 
     "corridor_right": {
         "id": "corridor_right", "w": 2, "h": 6, "zone": "corridor_right", "h_scalable": True,
-        "description": "Corridor on the right side. U-bracket spanning the full section height, opening inward. Connects to adjacent chair at the bottom and shelf at the top.",
-        "tags": ["corridor", "circulation", "h-scalable", "right-side"],
-        # U-bracket opening leftward: bottom-left port → right wall → top-left port
-        "h_segments_fn": lambda H: [[(0.0, 0.5), (1.5, 0.5), (1.5, H - 0.5), (0.0, H - 0.5)]],
-        "h_ports_fn":    lambda H: {"top": [], "bottom": [], "left": [(0.0, 0.5), (0.0, H - 0.5)], "right": []},
+        "description": "Corridor on the right side. U-bracket spanning the full section height, opening inward. Width grows as section gets wider; inner wall stays 0.5 from the right edge.",
+        "tags": ["corridor", "circulation", "h-scalable", "w-scalable", "right-side"],
+        # U-bracket opening leftward; inner wall at x = w-0.5 so it scales with corridor width
+        "wh_segments_fn": lambda w, H: [[(0.0, 0.5), (w - 0.5, 0.5), (w - 0.5, H - 0.5), (0.0, H - 0.5)]],
+        "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [(0.0, 0.5), (0.0, H - 0.5)], "right": []},
     },
     "corridor_left": {
         "id": "corridor_left", "w": 2, "h": 6, "zone": "corridor_left", "h_scalable": True,
-        "description": "Corridor on the left side. U-bracket spanning the full section height, opening inward. Connects to adjacent chair at the bottom and shelf at the top.",
-        "tags": ["corridor", "circulation", "h-scalable", "left-side"],
-        # U-bracket opening rightward: bottom-right port → left wall → top-right port
-        "h_segments_fn": lambda H: [[(2.0, 0.5), (0.5, 0.5), (0.5, H - 0.5), (2.0, H - 0.5)]],
-        "h_ports_fn":    lambda H: {"top": [], "bottom": [], "left": [], "right": [(2.0, 0.5), (2.0, H - 0.5)]},
+        "description": "Corridor on the left side. U-bracket spanning the full section height, opening inward. Width grows as section gets wider; inner wall stays 0.5 from the left edge.",
+        "tags": ["corridor", "circulation", "h-scalable", "w-scalable", "left-side"],
+        # U-bracket opening rightward; right face at x = w so it scales with corridor width
+        "wh_segments_fn": lambda w, H: [[(w, 0.5), (0.5, 0.5), (0.5, H - 0.5), (w, H - 0.5)]],
+        "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [], "right": [(w, 0.5), (w, H - 0.5)]},
     },
 
     # ── 1×1 filler tiles ──────────────────────────────────────────────────────
@@ -776,13 +838,6 @@ ZONES = [
 # Each variant adds BOTH a port (for adjacency) AND a segment stub (for circuit).
 # Variants are only created when the base module's geometry reaches the connection point.
 
-def _has_waypoint(segments, pt, eps=1e-9):
-    return any(
-        abs(p[0] - pt[0]) < eps and abs(p[1] - pt[1]) < eps
-        for seg in segments for p in seg
-    )
-
-
 def _has_endpoint(segments, pt, eps=1e-9):
     return any(
         (abs(seg[0][0] - pt[0]) < eps and abs(seg[0][1] - pt[1]) < eps) or
@@ -795,23 +850,29 @@ def _build_corridor_variants() -> None:
     to_add = {}
     for key, m in list(MODULES.items()):
         if m["zone"] == "chair_right":
-            # Seat-rectangle variants have (1.5, 0.5) as a waypoint → add right stub
-            if _has_waypoint(m["segments"], (1.5, 0.5)):
-                nid = key.replace("chair_right_", "chair_right_corr_")
-                to_add[nid] = {
-                    **m, "id": nid,
-                    "segments": m["segments"] + [[(1.5, 0.5), (2.0, 0.5)]],
-                    "ports":    {**m["ports"], "right": [(2.0, 0.5)]},
-                }
+            # Find rightmost point at y=0.5; extend a stub from there to the right edge x=2.0
+            xs_at_05 = [p[0] for seg in m["segments"] for p in seg if abs(p[1] - 0.5) < 1e-9]
+            if xs_at_05:
+                rx = max(xs_at_05)
+                if rx < 2.0 - 1e-9:
+                    nid = key.replace("chair_right_", "chair_right_corr_")
+                    to_add[nid] = {
+                        **m, "id": nid,
+                        "segments": m["segments"] + [[(rx, 0.5), (2.0, 0.5)]],
+                        "ports":    {**m["ports"], "right": [(2.0, 0.5)]},
+                    }
         elif m["zone"] == "chair_left":
-            # Seat-rectangle variants have (0.5, 0.5) as a waypoint → add left stub
-            if _has_waypoint(m["segments"], (0.5, 0.5)):
-                nid = key.replace("chair_left_", "chair_left_corr_")
-                to_add[nid] = {
-                    **m, "id": nid,
-                    "segments": m["segments"] + [[(0.5, 0.5), (0.0, 0.5)]],
-                    "ports":    {**m["ports"], "left": [(0.0, 0.5)]},
-                }
+            # Find leftmost point at y=0.5; extend a stub from there to the left edge x=0.0
+            xs_at_05 = [p[0] for seg in m["segments"] for p in seg if abs(p[1] - 0.5) < 1e-9]
+            if xs_at_05:
+                lx = min(xs_at_05)
+                if lx > 0.0 + 1e-9:
+                    nid = key.replace("chair_left_", "chair_left_corr_")
+                    to_add[nid] = {
+                        **m, "id": nid,
+                        "segments": m["segments"] + [[(lx, 0.5), (0.0, 0.5)]],
+                        "ports":    {**m["ports"], "left": [(0.0, 0.5)]},
+                    }
         elif m["zone"] == "shelf":
             ref_W    = m["w"]
             ref_segs = m["segments_fn"](ref_W)
@@ -848,6 +909,14 @@ _CR_CORR   = [m.replace("chair_right_", "chair_right_corr_") for m in ZONES[2]["
 _SH_CORR_R = [m + "_corr_r" for m in ZONES[3]["modules"] if m + "_corr_r" in MODULES]
 _SH_CORR_L = [m + "_corr_l" for m in ZONES[3]["modules"] if m + "_corr_l" in MODULES]
 
+# Narrow-mode shelves: single-post variants with corridor stubs.
+_SH_NARROW_CORR_R = [m + "_corr_r" for m in
+                     ["shelf_narrow_r_v1", "shelf_narrow_r_v2", "shelf_narrow_r_v3"]
+                     if m + "_corr_r" in MODULES]
+_SH_NARROW_CORR_L = [m + "_corr_l" for m in
+                     ["shelf_narrow_l_v1", "shelf_narrow_l_v2", "shelf_narrow_l_v3"]
+                     if m + "_corr_l" in MODULES]
+
 # corridor_right layout: corridor pre-placed at x=W-2..W; inner zones solved over W-2
 ZONES_CORR_RIGHT = [
     ZONES[0],                                          # chair_left  — unchanged
@@ -862,6 +931,23 @@ ZONES_CORR_LEFT = [
     ZONES[1],                                          # table       — unchanged
     ZONES[2],                                          # chair_right — unchanged
     {**ZONES[3], "modules": _SH_CORR_L},              # shelf       — adds left port
+]
+
+# narrow corridor_right (inner_W < 6): chair_left + table flush-right + shelf
+# Single-post shelf used: only the left post reaches y=0 (above chair_left).
+# The table has no top port, so the shelf must NOT have a bottom port on the right side.
+ZONES_CORR_RIGHT_NARROW = [
+    ZONES[0],                                          # chair_left  — standard
+    {**ZONES[1], "x_rule": ["last 2"]},               # table       — right-aligned, touches corridor
+    {**ZONES[3], "modules": _SH_NARROW_CORR_R},       # shelf       — left post only + right corr stub
+]
+
+# narrow corridor_left (inner_W < 6): table flush-left + chair_right + shelf
+# Single-post shelf: only the right post reaches y=0 (above chair_right).
+ZONES_CORR_LEFT_NARROW = [
+    {**ZONES[1], "x_rule": ["first 2"]},              # table       — left-aligned, touches corridor
+    ZONES[2],                                          # chair_right — standard
+    {**ZONES[3], "modules": _SH_NARROW_CORR_L},       # shelf       — right post only + left corr stub
 ]
 
 # Required zones for a valid section
@@ -988,6 +1074,8 @@ def check_circuit(placed: List[dict]) -> bool:
 # ── Parametric segment / port resolvers ──────────────────────────────────────
 
 def get_segments(mod: dict, w: int, h: int = None) -> List:
+    if "wh_segments_fn" in mod:
+        return mod["wh_segments_fn"](w, h if h is not None else mod["h"])
     if "segments_fn" in mod:
         return mod["segments_fn"](w)
     if "h_segments_fn" in mod:
@@ -996,6 +1084,8 @@ def get_segments(mod: dict, w: int, h: int = None) -> List:
 
 
 def get_ports(mod: dict, w: int, h: int = None) -> dict:
+    if "wh_ports_fn" in mod:
+        return mod["wh_ports_fn"](w, h if h is not None else mod["h"])
     if "ports_fn" in mod:
         return mod["ports_fn"](w)
     if "h_ports_fn" in mod:
@@ -1016,7 +1106,7 @@ def _gap_cells(placed_so_far: List[dict], W: int, H: int) -> List[Tuple[int, int
             if (col, row) not in covered]
 
 
-def solve(W: int, H: int, seed: int, corridor: str = "none") -> Optional[List[dict]]:
+def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2) -> Optional[List[dict]]:
     """
     Two-phase backtracking solver.
     Phase 1: place named zone modules (chair, table, shelf, …).
@@ -1026,17 +1116,19 @@ def solve(W: int, H: int, seed: int, corridor: str = "none") -> Optional[List[di
     rng = random.Random(seed)
     filler_ids = [mid for mid, m in MODULES.items() if m["zone"] == "filler"]
 
-    # Corridor pre-placement — occupies 2 columns on one side; inner zones fill the rest
+    # Corridor pre-placement — corridor_w columns reserved; inner zones fill the rest.
+    # inner_W < 6 → narrow mode (one chair + table facing corridor).
+    # inner_W >= 6 → full mode (two chairs + corridor on the outside).
     if corridor == "corridor_right":
-        inner_W, x_offset = W - 2, 0
+        inner_W, x_offset = W - corridor_w, 0
         placed = [{"module_id": "corridor_right",
-                   "x_off": float(W - 2), "y_off": 0.0, "w": 2, "h": H}]
-        active_zones = ZONES_CORR_RIGHT
+                   "x_off": float(W - corridor_w), "y_off": 0.0, "w": corridor_w, "h": H}]
+        active_zones = ZONES_CORR_RIGHT if inner_W >= 6 else ZONES_CORR_RIGHT_NARROW
     elif corridor == "corridor_left":
-        inner_W, x_offset = W - 2, 2
+        inner_W, x_offset = W - corridor_w, corridor_w
         placed = [{"module_id": "corridor_left",
-                   "x_off": 0.0, "y_off": 0.0, "w": 2, "h": H}]
-        active_zones = ZONES_CORR_LEFT
+                   "x_off": 0.0, "y_off": 0.0, "w": corridor_w, "h": H}]
+        active_zones = ZONES_CORR_LEFT if inner_W >= 6 else ZONES_CORR_LEFT_NARROW
     else:
         inner_W, x_offset = W, 0
         placed = []
@@ -1317,21 +1409,28 @@ with tab_sec:
         "Corridor",
         options=["None", "Corridor Left", "Corridor Right"],
         horizontal=True,
-        help="Corridors connect adjacent sections. When active, 2 columns are reserved on the chosen side.",
+        help="Adds a circulation corridor on one side. Use Corridor Width to control how wide it is.",
     )
     corridor = {"None": "none", "Corridor Left": "corridor_left", "Corridor Right": "corridor_right"}[corridor_choice]
 
     # ── Step 2: dimensions & seed ─────────────────────────────────────────────
-    min_W = 8 if corridor != "none" else 6
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
         seed = int(st.slider("Seed", min_value=0, max_value=1_000_000, value=42, step=1))
     with c2:
-        W = int(st.number_input("Width W", min_value=min_W, max_value=20, value=max(6, min_W), step=1,
-                                help="Shelf auto-scales to full width; gaps between zones filled automatically"))
+        W = int(st.number_input("Width W", min_value=6, max_value=20, value=6, step=1,
+                                help="Total section width. W 6–7 with corridor = narrow (one chair). W ≥ 8 = full (two chairs)."))
     with c3:
         H = int(st.number_input("Height H", min_value=6, max_value=20, value=6, step=1,
                                 help="Extra rows above zones are auto-filled with filler tiles"))
+    with c4:
+        if corridor != "none":
+            corridor_w = int(st.number_input("Corridor Width", min_value=2, max_value=max(2, W - 4),
+                                             value=2, step=1,
+                                             help="Corridor columns. inner = W − corridor_w. "
+                                                  "inner < 6 → narrow mode (one chair). inner ≥ 6 → full mode."))
+        else:
+            corridor_w = 2
 
     show_figures = st.checkbox(
         "Show human scale figures  (180 cm = 4.5 grid units)",
@@ -1340,11 +1439,15 @@ with tab_sec:
              "Requires silhouette_seated.png and silhouette_standing.png in the app folder.",
     )
 
-    if corridor != "none" and W < 8:
-        st.warning("Corridor mode requires W ≥ 8 (2 columns reserved for corridor + 6 for inner zones).")
+    if corridor != "none":
+        inner_W_preview = W - corridor_w
+        if inner_W_preview < 6:
+            st.info(f"Narrow mode — inner section is {inner_W_preview} cols (chair + table facing corridor).")
+        else:
+            st.info(f"Full mode — inner section is {inner_W_preview} cols (two chairs + corridor on the outside).")
 
     with st.spinner("Solving…"):
-        result = solve(W, H, seed, corridor)
+        result = solve(W, H, seed, corridor, corridor_w)
 
     if result is None:
         st.error("No valid section found — circuit cannot be closed with current modules.")
