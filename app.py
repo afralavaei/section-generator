@@ -950,6 +950,12 @@ ZONES_CORR_LEFT_NARROW = [
     {**ZONES[3], "modules": _SH_NARROW_CORR_L},       # shelf       — right post only + left corr stub
 ]
 
+# Table module groups — split by whether the top bar spans the full 2-unit width ("wide-top").
+# Compact tables (no wide-top): chairs sit flush against table, dining zone = 6 cols.
+# Spacious tables (wide-top):  1-col filler gap each side required, dining zone = 8 cols.
+_TABLE_COMPACT  = [m for m in ZONES[1]["modules"] if "wide-top" not in MODULES[m]["tags"]]
+_TABLE_SPACIOUS = [m for m in ZONES[1]["modules"] if "wide-top"     in MODULES[m]["tags"]]
+
 # Required zones for a valid section
 SECTION_RULES = ["chair_left", "table", "chair_right", "shelf"]
 
@@ -1093,6 +1099,15 @@ def get_ports(mod: dict, w: int, h: int = None) -> dict:
     return mod["ports"]
 
 
+def _seat_y(mod: dict) -> float:
+    """Highest segment y-coord below the top port — the effective seat level."""
+    segs = mod.get("segments", [])
+    top_ys = {py for _, py in mod.get("ports", {}).get("top", [])}
+    top_y = max(top_ys) if top_ys else float("inf")
+    ys = [p[1] for seg in segs for p in seg if p[1] < top_y - EPS]
+    return max(ys) if ys else 0.0
+
+
 # ── Solver ────────────────────────────────────────────────────────────────────
 
 def _gap_cells(placed_so_far: List[dict], W: int, H: int) -> List[Tuple[int, int]]:
@@ -1106,7 +1121,8 @@ def _gap_cells(placed_so_far: List[dict], W: int, H: int) -> List[Tuple[int, int
             if (col, row) not in covered]
 
 
-def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2) -> Optional[List[dict]]:
+def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2,
+          dining_style: str = "compact") -> Optional[List[dict]]:
     """
     Two-phase backtracking solver.
     Phase 1: place named zone modules (chair, table, shelf, …).
@@ -1133,6 +1149,13 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
         inner_W, x_offset = W, 0
         placed = []
         active_zones = ZONES
+
+    # Replace table modules based on dining style (preserves x_rule / y_rule overrides)
+    table_mods = _TABLE_COMPACT if dining_style == "compact" else _TABLE_SPACIOUS
+    active_zones = [
+        {**z, "modules": table_mods} if z.get("id") == "table" else z
+        for z in active_zones
+    ]
 
     # Phase 1 candidates — one option list per named zone
     reg_candidates: List[List[dict]] = []
@@ -1185,9 +1208,12 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
         return ok
 
     def _chairs_same_height() -> bool:
-        cl_h = next((p["h"] for p in placed if MODULES[p["module_id"]]["zone"] == "chair_left"),  None)
-        cr_h = next((p["h"] for p in placed if MODULES[p["module_id"]]["zone"] == "chair_right"), None)
-        return cl_h is None or cr_h is None or cl_h == cr_h
+        cl = next((p for p in placed if MODULES[p["module_id"]]["zone"] == "chair_left"),  None)
+        cr = next((p for p in placed if MODULES[p["module_id"]]["zone"] == "chair_right"), None)
+        if cl is None or cr is None:
+            return True
+        ml, mr = MODULES[cl["module_id"]], MODULES[cr["module_id"]]
+        return cl["h"] == cr["h"] and _seat_y(ml) == _seat_y(mr)
 
     def bt_reg(i: int) -> bool:
         if i == len(reg_candidates):
@@ -1413,24 +1439,52 @@ with tab_sec:
     )
     corridor = {"None": "none", "Corridor Left": "corridor_left", "Corridor Right": "corridor_right"}[corridor_choice]
 
-    # ── Step 2: dimensions & seed ─────────────────────────────────────────────
-    c1, c2, c3, c4 = st.columns(4)
+    # ── Step 2: seating count ─────────────────────────────────────────────────
+    chairs_choice = st.radio(
+        "Seating",
+        options=["2 Chairs", "1 Chair"],
+        horizontal=True,
+        help="2 Chairs: both sides of the table occupied.  "
+             "1 Chair: single-sided seating — requires a corridor on the open side.",
+    )
+    num_chairs = 2 if chairs_choice == "2 Chairs" else 1
+
+    # ── Step 3: table style ───────────────────────────────────────────────────
+    dining_choice = st.radio(
+        "Table Style",
+        options=["Compact", "Spacious"],
+        horizontal=True,
+        help="Compact = narrow tables, chairs flush against table (no gap).  "
+             "Spacious = wide-top tables, 1 filler col gap between each chair and the table.",
+    )
+    dining_style = "compact" if dining_choice == "Compact" else "spacious"
+    if num_chairs == 2:
+        dining_w = 6 if dining_style == "compact" else 8
+    else:
+        dining_w = 4 if dining_style == "compact" else 5
+
+    # ── Step 4: seed, height, corridor width ──────────────────────────────────
+    c1, c2, c3 = st.columns(3)
     with c1:
         seed = int(st.slider("Seed", min_value=0, max_value=1_000_000, value=42, step=1))
     with c2:
-        W = int(st.number_input("Width W", min_value=6, max_value=20, value=6, step=1,
-                                help="Total section width. W 6–7 with corridor = narrow (one chair). W ≥ 8 = full (two chairs)."))
-    with c3:
         H = int(st.number_input("Height H", min_value=6, max_value=20, value=6, step=1,
-                                help="Extra rows above zones are auto-filled with filler tiles"))
-    with c4:
+                                help="Extra rows above zones are auto-filled with filler tiles."))
+    with c3:
         if corridor != "none":
-            corridor_w = int(st.number_input("Corridor Width", min_value=2, max_value=max(2, W - 4),
+            corridor_w = int(st.number_input("Corridor Width", min_value=2, max_value=8,
                                              value=2, step=1,
-                                             help="Corridor columns. inner = W − corridor_w. "
-                                                  "inner < 6 → narrow mode (one chair). inner ≥ 6 → full mode."))
+                                             help="Width of the corridor zone in columns."))
         else:
             corridor_w = 2
+
+    W = dining_w + (corridor_w if corridor != "none" else 0)
+    st.caption(
+        f"Section width: **{W}** cols "
+        f"({dining_w} dining" +
+        (f" + {corridor_w} corridor" if corridor != "none" else "") +
+        ")"
+    )
 
     show_figures = st.checkbox(
         "Show human scale figures  (180 cm = 4.5 grid units)",
@@ -1439,31 +1493,27 @@ with tab_sec:
              "Requires silhouette_seated.png and silhouette_standing.png in the app folder.",
     )
 
-    if corridor != "none":
-        inner_W_preview = W - corridor_w
-        if inner_W_preview < 6:
-            st.info(f"Narrow mode — inner section is {inner_W_preview} cols (chair + table facing corridor).")
-        else:
-            st.info(f"Full mode — inner section is {inner_W_preview} cols (two chairs + corridor on the outside).")
-
-    with st.spinner("Solving…"):
-        result = solve(W, H, seed, corridor, corridor_w)
-
-    if result is None:
-        st.error("No valid section found — circuit cannot be closed with current modules.")
+    if num_chairs == 1 and corridor == "none":
+        st.warning("1-chair mode requires a corridor — select Corridor Left or Corridor Right above.")
     else:
-        st.pyplot(plot_section(result, W, H, show_figures=show_figures))
+        with st.spinner("Solving…"):
+            result = solve(W, H, seed, corridor, corridor_w, dining_style)
 
-        with st.expander("Placement details"):
-            for p in result:
-                st.write(
-                    f"**{p['module_id']}** — "
-                    f"offset ({p['x_off']:.0f}, {p['y_off']:.0f})  "
-                    f"size {p['w']}w × {p['h']}h"
-                )
+        if result is None:
+            st.error("No valid section found — circuit cannot be closed with current modules.")
+        else:
+            st.pyplot(plot_section(result, W, H, show_figures=show_figures))
 
-        with st.expander("Circuit validation"):
-            ok_adj = check_adjacency(result)
-            ok_cir = check_circuit(result)
-            st.write(f"Adjacency check: {'✓ pass' if ok_adj else '✗ fail'}")
-            st.write(f"Closed circuit:  {'✓ pass' if ok_cir else '✗ fail'}")
+            with st.expander("Placement details"):
+                for p in result:
+                    st.write(
+                        f"**{p['module_id']}** — "
+                        f"offset ({p['x_off']:.0f}, {p['y_off']:.0f})  "
+                        f"size {p['w']}w × {p['h']}h"
+                    )
+
+            with st.expander("Circuit validation"):
+                ok_adj = check_adjacency(result)
+                ok_cir = check_circuit(result)
+                st.write(f"Adjacency check: {'✓ pass' if ok_adj else '✗ fail'}")
+                st.write(f"Closed circuit:  {'✓ pass' if ok_cir else '✗ fail'}")
