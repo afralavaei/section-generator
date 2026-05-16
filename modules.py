@@ -20,6 +20,65 @@ ZONE_COLORS = {
 # segments : list of polylines [(x,y), ...] — for drawing only
 # ports     : dict edge → [(x,y)] — boundary midpoints where lines exit the module
 
+
+def _lean_segs(w: int, H: int, side: str, drop: float) -> list:
+    """
+    Circuit-valid segments for a lean-to corridor.
+    Inner wall (dining side) top = H-0.5; outer wall top = H-0.5-drop.
+    drop controls visible slope variation across v1/v2/v3 variants.
+    """
+    outer_y = H - 0.5 - drop
+    if side == "right":
+        return [
+            [(0.0, 0.5),         (w - 0.5, 0.5)],
+            [(w - 0.5, 0.5),     (w - 0.5, outer_y)],
+            [(w - 0.5, outer_y), (0.0, H - 0.5)],
+        ]
+    else:
+        return [
+            [(w, 0.5),       (0.5, 0.5)],
+            [(0.5, 0.5),     (0.5, outer_y)],
+            [(0.5, outer_y), (w, H - 0.5)],
+        ]
+
+
+def _spacious_segs(w: int, H: int, side: str) -> list:
+    """
+    Circuit-valid segments for a spacious corridor.
+    Outer 1.5-wide strip has horizontal shelves; inner zone is open circulation.
+    Segments are split at every junction so all endpoints are degree 2 or 3.
+    """
+    shelf_ys = sorted(y for y in (k * 1.5 for k in range(1, H + 1)) if 0.5 < y < H - 0.5)
+
+    if side == "right":
+        outer_x = w - 0.5
+        dx      = outer_x - 1.5
+        inner_x = 0.0
+    else:
+        outer_x = 0.5
+        dx      = outer_x + 1.5
+        inner_x = float(w)
+
+    segs = []
+    # Bottom arm — split at divider x
+    segs.append([(inner_x, 0.5), (dx, 0.5)])
+    segs.append([(dx, 0.5),      (outer_x, 0.5)])
+    # Top arm — split at divider x
+    segs.append([(outer_x, H - 0.5), (dx, H - 0.5)])
+    segs.append([(dx, H - 0.5),      (inner_x, H - 0.5)])
+    # Outer arm — split at each shelf_y
+    for a, b in zip([0.5] + shelf_ys, shelf_ys + [H - 0.5]):
+        segs.append([(outer_x, a), (outer_x, b)])
+    # Vertical divider — split at each shelf_y
+    for a, b in zip([0.5] + shelf_ys, shelf_ys + [H - 0.5]):
+        segs.append([(dx, a), (dx, b)])
+    # Horizontal shelves
+    lo, hi = min(dx, outer_x), max(dx, outer_x)
+    for y in shelf_ys:
+        segs.append([(lo, y), (hi, y)])
+    return segs
+
+
 MODULES: Dict[str, dict] = {
 
     #-------Left_Chair_Modules------------------------------------------------------
@@ -680,6 +739,60 @@ MODULES: Dict[str, dict] = {
         "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W-0.5, 0.0)], "left": [], "right": []},
     },
 
+    # ── Lean-to shelf slope variants ─────────────────────────────────────────
+    # Three slopes for each lean direction (right-rising and left-rising).
+    # Eave heights are fixed; slope = (high_eave - low_eave) / (W - 1).
+    # _build_corridor_variants() auto-generates _corr_r for right-rising variants
+    # (right post endpoint at y=2.5) and _corr_l for left-rising variants.
+
+    # ── lean right: low-left → high-right (right eave fixed at y=2.5) ────────
+    "shelf_lean_r_gentle": {
+        "id": "shelf_lean_r_gentle", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        "description": "Lean-to shelf, gentle rise left→right. Left eave y=2.0, right eave y=2.5.",
+        "tags": ["lean-to", "pitched", "gentle", "right-rise"],
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 2.0)],
+            [(W - 0.5, 0.0), (W - 0.5, 2.5)],
+            [(0.5, 2.0), (W - 0.5, 2.5)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W - 0.5, 0.0)], "left": [], "right": []},
+    },
+    "shelf_lean_r_steep": {
+        "id": "shelf_lean_r_steep", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        "description": "Lean-to shelf, steep rise left→right. Left eave y=0.5, right eave y=2.5.",
+        "tags": ["lean-to", "pitched", "steep", "right-rise"],
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 0.5)],
+            [(W - 0.5, 0.0), (W - 0.5, 2.5)],
+            [(0.5, 0.5), (W - 0.5, 2.5)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W - 0.5, 0.0)], "left": [], "right": []},
+    },
+
+    # ── lean left: high-left → low-right (left eave fixed at y=2.5) ──────────
+    "shelf_lean_l_gentle": {
+        "id": "shelf_lean_l_gentle", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        "description": "Lean-to shelf, gentle rise right→left. Left eave y=2.5, right eave y=2.0.",
+        "tags": ["lean-to", "pitched", "gentle", "left-rise"],
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 2.5)],
+            [(W - 0.5, 0.0), (W - 0.5, 2.0)],
+            [(0.5, 2.5), (W - 0.5, 2.0)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W - 0.5, 0.0)], "left": [], "right": []},
+    },
+    "shelf_lean_l_steep": {
+        "id": "shelf_lean_l_steep", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
+        "description": "Lean-to shelf, steep rise right→left. Left eave y=2.5, right eave y=0.5.",
+        "tags": ["lean-to", "pitched", "steep", "left-rise"],
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 2.5)],
+            [(W - 0.5, 0.0), (W - 0.5, 0.5)],
+            [(0.5, 2.5), (W - 0.5, 0.5)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W - 0.5, 0.0)], "left": [], "right": []},
+    },
+
     # ── Narrow-mode shelf modules ─────────────────────────────────────────────
     # Used in 1-chair mode: one side is above the chair (open bay, post to floor),
     # the other side is above the table (no floor connection allowed — table has no
@@ -777,6 +890,69 @@ MODULES: Dict[str, dict] = {
         "wh_segments_fn": lambda w, H: [[(w, 0.5), (0.5, 0.5), (0.5, H - 0.5), (w, H - 0.5)]],
         "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [], "right": [(w, 0.5), (w, H - 0.5)]},
     },
+    "corridor_right_spacious": {
+        "id": "corridor_right_spacious", "w": 4, "h": 6, "zone": "corridor_right", "h_scalable": True,
+        "description": "Corridor right — spacious (4-col). Outer 1.5-wide shelf strip; inner zone open circulation.",
+        "tags": ["corridor", "circulation", "h-scalable", "right-side", "spacious"],
+        "wh_segments_fn": lambda w, H: _spacious_segs(w, H, "right"),
+        "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [(0.0, 0.5), (0.0, H - 0.5)], "right": []},
+    },
+    "corridor_left_spacious": {
+        "id": "corridor_left_spacious", "w": 4, "h": 6, "zone": "corridor_left", "h_scalable": True,
+        "description": "Corridor left — spacious (4-col). Outer 1.5-wide shelf strip; inner zone open circulation.",
+        "tags": ["corridor", "circulation", "h-scalable", "left-side", "spacious"],
+        "wh_segments_fn": lambda w, H: _spacious_segs(w, H, "left"),
+        "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [], "right": [(w, 0.5), (w, H - 0.5)]},
+    },
+
+    # ── Lean-to corridor modules ──────────────────────────────────────────────
+    # Inner wall (dining side) top = H-0.5 (high port, connects to shelf eave).
+    # Outer wall tops at max(H-0.5-drop, 6.0) — never lower than y=6.
+    # Three drop variants give different slopes; solver picks randomly by seed.
+    # All share identical ports with the standard corridor so zone rules are
+    # reused without change.
+    "corridor_right_lean_v1": {
+        "id": "corridor_right_lean_v1", "w": 2, "h": 6, "zone": "corridor_right", "h_scalable": True,
+        "description": "Corridor right, lean-to — gentle slope (outer drops 1 unit below inner).",
+        "tags": ["corridor", "circulation", "h-scalable", "right-side", "lean-to"],
+        "wh_segments_fn": lambda w, H: _lean_segs(w, H, "right", 1.0),
+        "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [(0.0, 0.5), (0.0, H - 0.5)], "right": []},
+    },
+    "corridor_right_lean_v2": {
+        "id": "corridor_right_lean_v2", "w": 2, "h": 6, "zone": "corridor_right", "h_scalable": True,
+        "description": "Corridor right, lean-to — medium slope (outer drops 2 units below inner).",
+        "tags": ["corridor", "circulation", "h-scalable", "right-side", "lean-to"],
+        "wh_segments_fn": lambda w, H: _lean_segs(w, H, "right", 2.0),
+        "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [(0.0, 0.5), (0.0, H - 0.5)], "right": []},
+    },
+    "corridor_right_lean_v3": {
+        "id": "corridor_right_lean_v3", "w": 2, "h": 6, "zone": "corridor_right", "h_scalable": True,
+        "description": "Corridor right, lean-to — steep slope (outer drops 3 units below inner).",
+        "tags": ["corridor", "circulation", "h-scalable", "right-side", "lean-to"],
+        "wh_segments_fn": lambda w, H: _lean_segs(w, H, "right", 3.0),
+        "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [(0.0, 0.5), (0.0, H - 0.5)], "right": []},
+    },
+    "corridor_left_lean_v1": {
+        "id": "corridor_left_lean_v1", "w": 2, "h": 6, "zone": "corridor_left", "h_scalable": True,
+        "description": "Corridor left, lean-to — gentle slope (outer drops 1 unit below inner).",
+        "tags": ["corridor", "circulation", "h-scalable", "left-side", "lean-to"],
+        "wh_segments_fn": lambda w, H: _lean_segs(w, H, "left", 1.0),
+        "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [], "right": [(w, 0.5), (w, H - 0.5)]},
+    },
+    "corridor_left_lean_v2": {
+        "id": "corridor_left_lean_v2", "w": 2, "h": 6, "zone": "corridor_left", "h_scalable": True,
+        "description": "Corridor left, lean-to — medium slope (outer drops 2 units below inner).",
+        "tags": ["corridor", "circulation", "h-scalable", "left-side", "lean-to"],
+        "wh_segments_fn": lambda w, H: _lean_segs(w, H, "left", 2.0),
+        "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [], "right": [(w, 0.5), (w, H - 0.5)]},
+    },
+    "corridor_left_lean_v3": {
+        "id": "corridor_left_lean_v3", "w": 2, "h": 6, "zone": "corridor_left", "h_scalable": True,
+        "description": "Corridor left, lean-to — steep slope (outer drops 3 units below inner).",
+        "tags": ["corridor", "circulation", "h-scalable", "left-side", "lean-to"],
+        "wh_segments_fn": lambda w, H: _lean_segs(w, H, "left", 3.0),
+        "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [], "right": [(w, 0.5), (w, H - 0.5)]},
+    },
 
     # ── 1×1 filler tiles ──────────────────────────────────────────────────────
     "filler_empty": {
@@ -847,6 +1023,8 @@ ZONES = [
         "modules": [
             "shelf_h3_v1", "shelf_h3_v2", "shelf_h3_v3", "shelf_h3_v4",
             "shelf_h3_v5", "shelf_h3_v6", "shelf_h3_v7", "shelf_h3_v8",
+            "shelf_lean_r_gentle", "shelf_lean_r_steep",
+            "shelf_lean_l_gentle", "shelf_lean_l_steep",
             "shelf_pitched_sym_v1",   "shelf_pitched_sym_v2",
             "shelf_pitched_left_v1",  "shelf_pitched_left_v2",
             "shelf_pitched_right_v1", "shelf_pitched_right_v2",
@@ -968,7 +1146,12 @@ _TABLE_SPACIOUS = [m for m in ZONES[1]["modules"] if "wide-top"     in MODULES[m
 _SHELF_PLANE   = ["shelf_h3_v1"]
 _SHELF_DIVIDED = ["shelf_h3_v2", "shelf_h3_v3", "shelf_h3_v6", "shelf_h3_v7", "shelf_h3_v8"]
 _SHELF_PITCHED = [
-    "shelf_h3_v4", "shelf_h3_v5",
+    # h=3 lean-to variants — 3 slopes per lean direction
+    "shelf_h3_v4",        # medium lean-left  (left=2.5, right=1.5)
+    "shelf_h3_v5",        # medium lean-right (left=1.5, right=2.5)
+    "shelf_lean_r_gentle", "shelf_lean_r_steep",   # gentle / steep lean-right
+    "shelf_lean_l_gentle", "shelf_lean_l_steep",   # gentle / steep lean-left
+    # h=4 gable variants (no corridor pairing — no corr stubs generated)
     "shelf_pitched_sym_v1",   "shelf_pitched_sym_v2",
     "shelf_pitched_left_v1",  "shelf_pitched_left_v2",
     "shelf_pitched_right_v1", "shelf_pitched_right_v2",

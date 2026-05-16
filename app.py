@@ -29,6 +29,7 @@ with st.sidebar:
             horizontal=True,
         )
         corridor_w = 2 if "Compact" in corr_w_choice else 4
+
     else:
         corridor_w = 2
 
@@ -101,10 +102,10 @@ with tab_sec:
     if num_chairs == 1 and corridor == "none":
         st.warning("1-chair mode requires a corridor — select Corridor Left or Corridor Right in the sidebar.")
     else:
-        if roof_style == "pitched" and corridor != "none":
+        if roof_style == "pitched" and corridor != "none" and corridor_w == 2:
             st.info(
-                "Gable (h=4) pitched variants are not available with a corridor — "
-                "lean-to variants will be used instead."
+                "Pitched mode + corridor: the solver randomly combines slanted shelf, "
+                "lean-to corridor, or both — change Seed to explore variations."
             )
 
         with st.spinner("Solving…"):

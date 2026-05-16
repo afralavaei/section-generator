@@ -168,18 +168,57 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
     Phase 1: place named zone modules (chair, table, shelf, …).
     Phase 2: fill every remaining cell with a 1×1 filler tile so the
              full W×H grid is covered and the closed-circuit rule is met.
+
+    In pitched roof + corridor mode the solver randomly picks a combo so that
+    at least one of the two elements is slanted:
+      • shelf only  — standard corridor + pitched shelf
+      • corridor only — lean-to corridor + any shelf
+      • both         — lean-to corridor + pitched shelf
     """
     rng = random.Random(seed)
     filler_ids = [mid for mid, m in MODULES.items() if m["zone"] == "filler"]
 
+    _LEAN_RIGHT = ["corridor_right_lean_v1", "corridor_right_lean_v2", "corridor_right_lean_v3"]
+    _LEAN_LEFT  = ["corridor_left_lean_v1",  "corridor_left_lean_v2",  "corridor_left_lean_v3"]
+
+    # effective_roof controls shelf filtering; may differ from roof_style when
+    # a lean-to corridor already provides the pitched element.
+    effective_roof = roof_style
+
     if corridor == "corridor_right":
         inner_W, x_offset = W - corridor_w, 0
-        placed = [{"module_id": "corridor_right",
+        if corridor_w == 4:
+            corr_mid = "corridor_right_spacious"
+        elif roof_style == "pitched":
+            combo = rng.choice(["shelf_only", "corr_only", "both"])
+            if combo == "corr_only":
+                corr_mid = rng.choice(_LEAN_RIGHT)
+                effective_roof = "any"
+            elif combo == "both":
+                corr_mid = rng.choice(_LEAN_RIGHT)
+            else:
+                corr_mid = "corridor_right"
+        else:
+            corr_mid = "corridor_right"
+        placed = [{"module_id": corr_mid,
                    "x_off": float(W - corridor_w), "y_off": 0.0, "w": corridor_w, "h": H}]
         active_zones = ZONES_CORR_RIGHT if inner_W >= 6 else ZONES_CORR_RIGHT_NARROW
     elif corridor == "corridor_left":
         inner_W, x_offset = W - corridor_w, corridor_w
-        placed = [{"module_id": "corridor_left",
+        if corridor_w == 4:
+            corr_mid = "corridor_left_spacious"
+        elif roof_style == "pitched":
+            combo = rng.choice(["shelf_only", "corr_only", "both"])
+            if combo == "corr_only":
+                corr_mid = rng.choice(_LEAN_LEFT)
+                effective_roof = "any"
+            elif combo == "both":
+                corr_mid = rng.choice(_LEAN_LEFT)
+            else:
+                corr_mid = "corridor_left"
+        else:
+            corr_mid = "corridor_left"
+        placed = [{"module_id": corr_mid,
                    "x_off": 0.0, "y_off": 0.0, "w": corridor_w, "h": H}]
         active_zones = ZONES_CORR_LEFT if inner_W >= 6 else ZONES_CORR_LEFT_NARROW
     else:
@@ -193,10 +232,10 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
         for z in active_zones
     ]
 
-    if roof_style != "any":
+    if effective_roof != "any":
         def _shelf_ok(mid: str) -> bool:
             base = mid.replace("_corr_r", "").replace("_corr_l", "")
-            return _SHELF_CATEGORY.get(base, "any") == roof_style
+            return _SHELF_CATEGORY.get(base, "any") == effective_roof
         active_zones = [
             {**z, "modules": [m for m in z["modules"] if _shelf_ok(m)]}
             if z.get("id") == "shelf" else z
