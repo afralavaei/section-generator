@@ -6,7 +6,7 @@ import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 
-from modules import MODULES, ZONE_COLORS, LINE_COLOR, PORT_COLOR, GRID_COLOR, ZONE_ORDER, _SHELF_CATEGORY
+from modules import MODULES, ZONE_COLORS, LINE_COLOR, PORT_COLOR, GRID_COLOR, ZONE_ORDER
 from solver import get_segments, get_ports
 
 
@@ -131,15 +131,7 @@ def plot_section(placed: List[dict], W: int, H: int,
 
 _SECTION_ZONES: dict = {
     "Dining":  {"chair_left", "chair_right", "table", "shelf", "corridor_left", "corridor_right"},
-    "Kitchen": {"lower_cabinet", "upper_cabinet", "kitchen_wall", "shelf", "corridor_left", "corridor_right"},
-    "Living":  {"sofa", "tv_table", "table", "shelf", "corridor_left", "corridor_right"},
-}
-
-# One placeholder per zone shown in the Living library until living-specific modules exist.
-_LIVING_PLACEHOLDERS: dict = {
-    "sofa":     "sofa_h3_v1",
-    "tv_table": "tv_table_h3_v1",
-    "table":    "table_h2_v1",
+    "Kitchen": {"lower_cabinet", "upper_cabinet"},
 }
 
 
@@ -149,12 +141,7 @@ def plot_module_library(section: str = "Dining") -> plt.Figure:
         (m for m in MODULES.values()
          if (allowed is None or m["zone"] in allowed)
          and "narrow" not in m["id"]
-         and not (m["zone"] in ("chair_left", "chair_right") and "_corr_" in m["id"])
-         and not (section == "Kitchen" and m["zone"] == "shelf" and "_corr_" in m["id"])
-         and not (section == "Kitchen" and m["zone"] == "shelf"
-                  and _SHELF_CATEGORY.get(m["id"]) == "divided")
-         and not (section == "Living" and m["zone"] in _LIVING_PLACEHOLDERS
-                  and m["id"] != _LIVING_PLACEHOLDERS.get(m["zone"]))),
+         and not (m["zone"] in ("chair_left", "chair_right") and "_corr_" in m["id"])),
         key=lambda m: (
             ZONE_ORDER.index(m["zone"]) if m["zone"] in ZONE_ORDER else 99,
             m["id"],
