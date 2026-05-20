@@ -147,6 +147,51 @@ def check_adjacency(placed: List[dict]) -> bool:
     return True
 
 
+def check_last_adjacency(placed: List[dict]) -> bool:
+    """Check only the last placed module against all previously placed ones. O(n) not O(n²)."""
+    if len(placed) < 2:
+        return True
+    new = placed[-1]
+    mn = MODULES[new["module_id"]]
+    nw, nh = new["w"], new["h"]
+    nx0, ny0 = new["x_off"], new["y_off"]
+
+    for old in placed[:-1]:
+        mo = MODULES[old["module_id"]]
+        ow, oh = old["w"], old["h"]
+        ox0, oy0 = old["x_off"], old["y_off"]
+
+        if abs((ox0 + ow) - nx0) < EPS:
+            y_lo = max(oy0, ny0); y_hi = min(oy0 + oh, ny0 + nh)
+            if y_hi > y_lo:
+                if (_ports_in_range(mo, "right", ox0, oy0, y_lo, y_hi, ow, oh) !=
+                        _ports_in_range(mn, "left",  nx0, ny0, y_lo, y_hi, nw, nh)):
+                    return False
+
+        if abs((nx0 + nw) - ox0) < EPS:
+            y_lo = max(oy0, ny0); y_hi = min(oy0 + oh, ny0 + nh)
+            if y_hi > y_lo:
+                if (_ports_in_range(mn, "right", nx0, ny0, y_lo, y_hi, nw, nh) !=
+                        _ports_in_range(mo, "left",  ox0, oy0, y_lo, y_hi, ow, oh)):
+                    return False
+
+        if abs((oy0 + oh) - ny0) < EPS:
+            x_lo = max(ox0, nx0); x_hi = min(ox0 + ow, nx0 + nw)
+            if x_hi > x_lo:
+                if (_ports_in_range(mo, "top",    ox0, oy0, x_lo, x_hi, ow, oh) !=
+                        _ports_in_range(mn, "bottom", nx0, ny0, x_lo, x_hi, nw, nh)):
+                    return False
+
+        if abs((ny0 + nh) - oy0) < EPS:
+            x_lo = max(ox0, nx0); x_hi = min(ox0 + ow, nx0 + nw)
+            if x_hi > x_lo:
+                if (_ports_in_range(mn, "top",    nx0, ny0, x_lo, x_hi, nw, nh) !=
+                        _ports_in_range(mo, "bottom", ox0, oy0, x_lo, x_hi, ow, oh)):
+                    return False
+
+    return True
+
+
 def check_circuit(placed: List[dict]) -> bool:
     """
     Build a degree map over all segment edge-vertices in the assembled section.
@@ -264,7 +309,7 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
                     return check_circuit(placed)
                 for opt in gap_candidates[i]:
                     placed.append(opt)
-                    if check_adjacency(placed):
+                    if check_last_adjacency(placed):
                         if bt_gap(i + 1):
                             return True
                     placed.pop()
@@ -280,7 +325,7 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
                 return solve_gaps_k()
             for opt in reg_candidates[i]:
                 placed.append(opt)
-                if check_adjacency(placed):
+                if check_last_adjacency(placed):
                     if bt_k(i + 1):
                         return True
                 placed.pop()
@@ -408,7 +453,7 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
                 return check_circuit(placed)
             for opt in gap_candidates[i]:
                 placed.append(opt)
-                if check_adjacency(placed):
+                if check_last_adjacency(placed):
                     if bt_gap(i + 1):
                         return True
                 placed.pop()
@@ -432,7 +477,7 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
             return solve_gaps()
         for opt in reg_candidates[i]:
             placed.append(opt)
-            if check_adjacency(placed) and _chairs_same_height():
+            if check_last_adjacency(placed) and _chairs_same_height():
                 if bt_reg(i + 1):
                     return True
             placed.pop()

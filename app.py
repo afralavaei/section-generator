@@ -56,15 +56,7 @@ with st.sidebar:
         "Corridor Right": "corridor_right",
     }[corridor_choice]
 
-    if corridor != "none":
-        corr_w_choice = st.radio(
-            "Corridor Width",
-            options=["Compact  (2 cols)", "Spacious  (4 cols)"],
-            horizontal=True,
-        )
-        corridor_w = 2 if "Compact" in corr_w_choice else 4
-    else:
-        corridor_w = 2
+    corridor_w = 2  # overridden below once dining_style is known
 
     st.divider()
 
@@ -84,6 +76,7 @@ with st.sidebar:
             help="Compact = narrow tables.  Spacious = wide-top tables with 1-col gap.",
         )
         dining_style = "compact" if dining_choice == "Compact" else "spacious"
+        corridor_w = 2 if dining_style == "compact" else 4
         if num_chairs == 2:
             dining_w = 6 if dining_style == "compact" else 8
         else:
@@ -261,7 +254,7 @@ with tab_test:
     _TEST_W, _TEST_H, _TEST_D = 6, 6, 3
     st.caption(
         f"Native 3D modules ({_TEST_W}×{_TEST_H}×{_TEST_D} grid). "
-        "Grey cells are auto-filled with filler_empty__ext."
+        "Grey cells are auto-filled with filler_empty_3d."
     )
     # Zone rules: chairs y=0–2, table y=0–3, roof y=3–6.
     # Connector pieces bridge the 1-cell gap (y=2) on each side
@@ -272,8 +265,8 @@ with tab_test:
         {"module_id": "chair_right_3d_v1",     "x_off": 4, "y_off": 0, "z_off": 0, "w": 2, "h": 2, "d": _TEST_D},
         {"module_id": "conn_chair_roof_left",  "x_off": 0, "y_off": 2, "z_off": 0, "w": 2, "h": 1, "d": _TEST_D},
         {"module_id": "conn_chair_roof_right", "x_off": 4, "y_off": 2, "z_off": 0, "w": 2, "h": 1, "d": _TEST_D},
-        {"module_id": "filler_empty__ext",     "x_off": 2, "y_off": 3, "z_off": 0, "w": 1, "h": 1, "d": _TEST_D},
-        {"module_id": "filler_empty__ext",     "x_off": 3, "y_off": 3, "z_off": 0, "w": 1, "h": 1, "d": _TEST_D},
+        {"module_id": "filler_empty_3d",     "x_off": 2, "y_off": 3, "z_off": 0, "w": 1, "h": 1, "d": _TEST_D},
+        {"module_id": "filler_empty_3d",     "x_off": 3, "y_off": 3, "z_off": 0, "w": 1, "h": 1, "d": _TEST_D},
         {"module_id": "roof_3d_v1",            "x_off": 0, "y_off": 3, "z_off": 0, "w": 6, "h": 3, "d": _TEST_D},
     ]
     st.pyplot(plot_section_3d(_test_placed, W=_TEST_W, H=_TEST_H, D=_TEST_D))

@@ -16,20 +16,16 @@ import random
 from collections import defaultdict
 from typing import Dict, List, Optional, Tuple
 
-import modules as _m2d
 from modules import EPS
 from modules3d import (
     MODULES_3D,
     ZONES_3D,
     ZONES_3D_CORR_RIGHT, ZONES_3D_CORR_LEFT,
     ZONES_3D_CORR_RIGHT_NARROW, ZONES_3D_CORR_LEFT_NARROW,
-    _TABLE_COMPACT_3D, _TABLE_SPACIOUS_3D,
-    _SHELF_CATEGORY,
-    EXT_SUFFIX,
     FILLER_IDS_3D,
     get_segments_3d, get_ports_3d,
 )
-from solver import resolve_rule, _seat_y as _seat_y_2d
+from solver import resolve_rule
 
 
 # ── Zone position resolver ────────────────────────────────────────────────────
@@ -189,7 +185,7 @@ def _gap_columns_3d(placed_so_far: List[dict], W: int, H: int) -> List[Tuple[int
             if (col, row) not in covered]
 
 
-# ── Chair seat-height check (reuses 2D _seat_y on the source module) ──────────
+# ── Chair seat-height check ───────────────────────────────────────────────────
 
 def _chairs_same_height_3d(placed: List[dict]) -> bool:
     cl = next((p for p in placed
@@ -198,14 +194,7 @@ def _chairs_same_height_3d(placed: List[dict]) -> bool:
                if MODULES_3D[p["module_id"]]["zone"] == "chair_right"), None)
     if cl is None or cr is None:
         return True
-    ml, mr = MODULES_3D[cl["module_id"]], MODULES_3D[cr["module_id"]]
-    src_l_id = ml.get("source_2d_id")
-    src_r_id = mr.get("source_2d_id")
-    if src_l_id is None or src_r_id is None:
-        return True  # native 3D modules — revisit at Phase 6
-    return (cl["h"] == cr["h"]
-            and _seat_y_2d(_m2d.MODULES[src_l_id])
-                == _seat_y_2d(_m2d.MODULES[src_r_id]))
+    return cl["h"] == cr["h"]
 
 
 # ── Module candidate eligibility ──────────────────────────────────────────────
@@ -225,46 +214,9 @@ def solve3d(W: int, H: int, D: int, seed: int,
     """Two-phase backtracking, same shape as solver.solve, with depth D added."""
     rng = random.Random(seed)
 
-    if corridor == "corridor_right":
-        inner_W, x_offset = W - corridor_w, 0
-        placed: List[dict] = [{
-            "module_id": "corridor_right" + EXT_SUFFIX,
-            "x_off": float(W - corridor_w), "y_off": 0.0, "z_off": 0.0,
-            "w": corridor_w, "h": H, "d": D,
-        }]
-        active_zones = ZONES_3D_CORR_RIGHT if inner_W >= 6 else ZONES_3D_CORR_RIGHT_NARROW
-    elif corridor == "corridor_left":
-        inner_W, x_offset = W - corridor_w, corridor_w
-        placed = [{
-            "module_id": "corridor_left" + EXT_SUFFIX,
-            "x_off": 0.0, "y_off": 0.0, "z_off": 0.0,
-            "w": corridor_w, "h": H, "d": D,
-        }]
-        active_zones = ZONES_3D_CORR_LEFT if inner_W >= 6 else ZONES_3D_CORR_LEFT_NARROW
-    else:
-        inner_W, x_offset = W, 0
-        placed = []
-        active_zones = ZONES_3D
-
-    # Table-style filter
-    table_mods = _TABLE_COMPACT_3D if dining_style == "compact" else _TABLE_SPACIOUS_3D
-    active_zones = [
-        {**z, "modules": table_mods} if z.get("id") == "table" else z
-        for z in active_zones
-    ]
-
-    # Roof-style filter on the shelf zone
-    if roof_style != "any":
-        def _shelf_ok(mid: str) -> bool:
-            base = (mid.replace(EXT_SUFFIX, "")
-                       .replace("_corr_r", "")
-                       .replace("_corr_l", ""))
-            return _SHELF_CATEGORY.get(base, "any") == roof_style
-        active_zones = [
-            {**z, "modules": [m for m in z["modules"] if _shelf_ok(m)]}
-            if z.get("id") == "shelf" else z
-            for z in active_zones
-        ]
+    inner_W, x_offset = W, 0
+    placed: List[dict] = []
+    active_zones = list(ZONES_3D)
 
     # Pre-compute candidate options per zone
     reg_candidates: List[List[dict]] = []

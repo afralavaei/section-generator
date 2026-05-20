@@ -22,7 +22,7 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers '3d' projectio
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 from modules import LINE_COLOR, PORT_COLOR, GRID_COLOR, ZONE_ORDER, ZONE_COLORS
-from modules3d import MODULES_3D, get_segments_3d, get_ports_3d, EXT_SUFFIX
+from modules3d import MODULES_3D, get_segments_3d, get_ports_3d
 
 
 # ── Voxel outline (12 edges of the module's bounding box) ─────────────────────
@@ -147,12 +147,12 @@ def plot_module_library_3d(default_d: int = 2) -> plt.Figure:
         ax.set_xlim(0, w); ax.set_ylim(0, d); ax.set_zlim(0, h)
         ax.set_box_aspect((w, d, h))
         ax.view_init(elev=20, azim=-55)
-        short = mod["id"].replace(EXT_SUFFIX, "").replace("filler_", "")
+        short = mod["id"].replace("filler_", "")
         ax.set_title(f"{short}\n{w}×{h}×{d}", fontsize=7, pad=4)
         ax.tick_params(labelsize=5)
         ax.grid(False)
 
-    fig.suptitle("Nomadic Engine — 3D Module Library  (auto-extruded)",
+    fig.suptitle("Nomadic Engine — 3D Module Library",
                  fontsize=12, y=1.0)
     fig.tight_layout()
     return fig
