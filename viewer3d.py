@@ -124,36 +124,37 @@ def plot_section_3d(placed: List[dict], W: int, H: int, D: int,
 
 # ── plot_module_library_3d ────────────────────────────────────────────────────
 
-def plot_module_library_3d(default_d: int = 2) -> plt.Figure:
+def plot_module_library_3d() -> plt.Figure:
     mods = sorted(
         (m for m in MODULES_3D.values()
-         if "narrow" not in m["id"]
-         and not (m["zone"] in ("chair_left", "chair_right") and "_corr_" in m["id"])),
+         if m["zone"] != "filler"
+         and "conn_" not in m["id"]),
         key=lambda m: (
             ZONE_ORDER.index(m["zone"]) if m["zone"] in ZONE_ORDER else 99,
+            m["h"],
             m["id"],
         ),
     )
 
-    n_cols = 4
+    n_cols = 5
     n_rows = math.ceil(len(mods) / n_cols)
-    fig = plt.figure(figsize=(n_cols * 3.4, n_rows * 3.2))
+    fig = plt.figure(figsize=(n_cols * 3.2, n_rows * 3.0))
 
     for i, mod in enumerate(mods):
         ax = fig.add_subplot(n_rows, n_cols, i + 1, projection="3d")
-        w, h = mod["w"], mod["h"]
-        d = default_d
+        w, h, d = mod["w"], mod["h"], mod["d"]
         _draw_module_3d(ax, mod, 0.0, 0.0, 0.0, w, h, d)
         ax.set_xlim(0, w); ax.set_ylim(0, d); ax.set_zlim(0, h)
         ax.set_box_aspect((w, d, h))
         ax.view_init(elev=20, azim=-55)
-        short = mod["id"].replace("filler_", "")
-        ax.set_title(f"{short}\n{w}×{h}×{d}", fontsize=7, pad=4)
-        ax.tick_params(labelsize=5)
+        label = mod["id"].replace("chair_left_", "cl_").replace("chair_right_", "cr_") \
+                         .replace("table_", "t_").replace("shelf_", "s_") \
+                         .replace("_3d_v", "_v").replace("roof_3d_v1", "roof")
+        ax.set_title(f"{label}\n{w}×{h}×{d}", fontsize=6, pad=3)
+        ax.tick_params(labelsize=4)
         ax.grid(False)
 
-    fig.suptitle("Nomadic Engine — 3D Module Library",
-                 fontsize=12, y=1.0)
+    fig.suptitle("Nomadic Engine — 3D Module Library", fontsize=12, y=1.0)
     fig.tight_layout()
     return fig
 

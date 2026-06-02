@@ -46,7 +46,7 @@ def _draw_module(ax, mod: dict, x_off: float, y_off: float,
                         color=PORT_COLOR, ms=6, zorder=4)
 
 
-_SILHOUETTE_DIR   = pathlib.Path(__file__).parent
+_SILHOUETTE_DIR   = pathlib.Path(__file__).parent / "presentaion"
 _silhouette_cache: dict = {}
 
 
@@ -119,6 +119,9 @@ def plot_section(placed: List[dict], W: int, H: int,
             elif zone in ("corridor_left", "corridor_right"):
                 _draw_silhouette(ax, standing_img, cx, p["y_off"] + 0.5, height_units=4.5,
                                  clip_patch=clip)
+            elif zone == "lower_cabinet":
+                _draw_silhouette(ax, standing_img, cx + 2, p["y_off"] + 0.5, height_units=4.5,
+                                 clip_patch=clip)
 
     ax.set_xlim(-0.3, W + 0.3)
     ax.set_ylim(-0.3, H + 0.3)
@@ -135,14 +138,6 @@ _SECTION_ZONES: dict = {
     "Living":  {"sofa", "tv_table", "table", "shelf", "corridor_left", "corridor_right"},
 }
 
-# One placeholder per zone shown in the Living library until living-specific modules exist.
-_LIVING_PLACEHOLDERS: dict = {
-    "sofa":     "sofa_h3_v1",
-    "tv_table": "tv_table_h3_v1",
-    "table":    "table_h2_v1",
-}
-
-
 def plot_module_library(section: str = "Dining") -> plt.Figure:
     allowed = _SECTION_ZONES.get(section)
     mods = sorted(
@@ -150,11 +145,10 @@ def plot_module_library(section: str = "Dining") -> plt.Figure:
          if (allowed is None or m["zone"] in allowed)
          and "narrow" not in m["id"]
          and not (m["zone"] in ("chair_left", "chair_right") and "_corr_" in m["id"])
+         and not (m["zone"] == "tv_table" and "_corr_" in m["id"])
          and not (section == "Kitchen" and m["zone"] == "shelf" and "_corr_" in m["id"])
          and not (section == "Kitchen" and m["zone"] == "shelf"
-                  and _SHELF_CATEGORY.get(m["id"]) == "divided")
-         and not (section == "Living" and m["zone"] in _LIVING_PLACEHOLDERS
-                  and m["id"] != _LIVING_PLACEHOLDERS.get(m["zone"]))),
+                  and _SHELF_CATEGORY.get(m["id"]) == "divided")),
         key=lambda m: (
             ZONE_ORDER.index(m["zone"]) if m["zone"] in ZONE_ORDER else 99,
             m["id"],

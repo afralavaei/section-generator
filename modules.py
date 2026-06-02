@@ -9,7 +9,7 @@ ZONE_COLORS = {
     "chair_left":     "#fde9a2",
     "chair_right":    "#fde9a2",
     "sofa":           "#f5c6a0",
-    "tv_table":       "#9db8a3",
+    "tv_table":       "#b8a8d0",
     "table":          "#d0e8d0",
     "shelf":          "#ac2e2e",
     "lower_cabinet":  "#c8a882",
@@ -24,27 +24,6 @@ ZONE_COLORS = {
 # Local coordinates: origin at bottom-left of module, x→right, y→up, 1 unit = 1 cell.
 # segments : list of polylines [(x,y), ...] — for drawing only
 # ports     : dict edge → [(x,y)] — boundary midpoints where lines exit the module
-
-
-def _lean_segs(w: int, H: int, side: str, drop: float) -> list:
-    """
-    Circuit-valid segments for a lean-to corridor.
-    Inner wall (dining side) top = H-0.5; outer wall top = H-0.5-drop.
-    drop controls visible slope variation across v1/v2/v3 variants.
-    """
-    outer_y = H - 0.5 - drop
-    if side == "right":
-        return [
-            [(0.0, 0.5),         (w - 0.5, 0.5)],
-            [(w - 0.5, 0.5),     (w - 0.5, outer_y)],
-            [(w - 0.5, outer_y), (0.0, H - 0.5)],
-        ]
-    else:
-        return [
-            [(w, 0.5),       (0.5, 0.5)],
-            [(0.5, 0.5),     (0.5, outer_y)],
-            [(0.5, outer_y), (w, H - 0.5)],
-        ]
 
 
 def _spacious_segs(w: int, H: int, side: str) -> list:
@@ -75,6 +54,46 @@ def _spacious_segs(w: int, H: int, side: str) -> list:
     for a, b in zip([0.5] + shelf_ys, shelf_ys + [H - 0.5]):
         segs.append([(outer_x, a), (outer_x, b)])
     # Vertical divider — split at each shelf_y
+    for a, b in zip([0.5] + shelf_ys, shelf_ys + [H - 0.5]):
+        segs.append([(dx, a), (dx, b)])
+    # Horizontal shelves
+    lo, hi = min(dx, outer_x), max(dx, outer_x)
+    for y in shelf_ys:
+        segs.append([(lo, y), (hi, y)])
+    return segs
+
+
+def _spacious_short_segs(w: int, H: int, side: str) -> list:
+    """
+    Like _spacious_segs but without the top arm — used for the short spacious
+    corridor beneath a full-width shelf.  The outer wall rises to y=H (the
+    corridor module top) so its endpoint connects to the shelf bottom port.
+    A horizontal stub joins the divider top to the outer wall so no dangling ends.
+    """
+    shelf_ys = sorted(y for y in (k * 1.5 for k in range(1, H + 1)) if 0.5 < y < H - 0.5)
+
+    if side == "right":
+        outer_x = w - 0.5
+        dx      = outer_x - 1.5
+        inner_x = 0.0
+    else:
+        outer_x = 0.5
+        dx      = outer_x + 1.5
+        inner_x = float(w)
+
+    segs = []
+    # Bottom arm — split at divider x
+    lo_x, hi_x = min(inner_x, dx), max(inner_x, dx)
+    segs.append([(inner_x, 0.5), (dx, 0.5)])
+    segs.append([(dx, 0.5),      (outer_x, 0.5)])
+    # Outer arm — from 0.5 up to H-0.5, split at shelf_ys
+    for a, b in zip([0.5] + shelf_ys, shelf_ys + [H - 0.5]):
+        segs.append([(outer_x, a), (outer_x, b)])
+    # Extension from H-0.5 to H (top port that meets the shelf)
+    segs.append([(outer_x, H - 0.5), (outer_x, H)])
+    # Top stub — connects divider top to outer wall (closes degree at divider top)
+    segs.append([(dx, H - 0.5), (outer_x, H - 0.5)])
+    # Vertical divider — split at shelf_ys
     for a, b in zip([0.5] + shelf_ys, shelf_ys + [H - 0.5]):
         segs.append([(dx, a), (dx, b)])
     # Horizontal shelves
@@ -408,8 +427,8 @@ MODULES: Dict[str, dict] = {
         "id": "table_h2_v1",
         "w": 2, "h": 2,
         "zone": "table",
-        "description": "Table, height 2. Two diagonals meet at a central V-tip below a mid-height horizontal bar.",
-        "tags": ["v-tip", "symmetric", "h2"],
+        "description": "Coffee table, height 2. Two diagonals meet at a central V-tip below a mid-height horizontal bar.",
+        "tags": ["v-tip", "symmetric", "h2", "coffee-table"],
         "segments": [
             [(0.5, 1.5), (1.5, 1.5)],   # top horizontal bar
             [(0.5, 1.5), (1.0, 0.5)],   # left diagonal to tip
@@ -428,8 +447,8 @@ MODULES: Dict[str, dict] = {
         "id": "table_h2_v2",
         "w": 2, "h": 2,
         "zone": "table",
-        "description": "Table, height 2. V-tip legs reach up to a horizontal bar near the top.",
-        "tags": ["v-tip", "tall-bar", "h2"],
+        "description": "Coffee table, height 2. V-tip legs reach up to a horizontal bar near the top.",
+        "tags": ["v-tip", "tall-bar", "h2", "coffee-table"],
         "segments": [
             [(0.5, 2.0), (1.5, 2.0)],   # top horizontal bar
             [(0.5, 2.0), (1.0, 0.5)],   # left diagonal to tip
@@ -448,8 +467,8 @@ MODULES: Dict[str, dict] = {
         "id": "table_h2_v3",
         "w": 2, "h": 2,
         "zone": "table",
-        "description": "Table, height 2. Rectangular frame with two straight vertical legs, each foot running to the side port.",
-        "tags": ["rectilinear", "h2"],
+        "description": "Coffee table, height 2. Rectangular frame with two straight vertical legs, each foot running to the side port.",
+        "tags": ["rectilinear", "h2", "coffee-table"],
         "segments": [
             [(0.5, 1.5), (1.5, 1.5)],            # top horizontal bar
             [(0.5, 1.5), (0.5, 0.5), (0.0, 0.5)],  # left leg → left port
@@ -466,8 +485,8 @@ MODULES: Dict[str, dict] = {
         "id": "table_h2_v4",
         "w": 2, "h": 2,
         "zone": "table",
-        "description": "Table, height 2. Tall rectangular frame with the top bar at maximum height, legs run to side ports.",
-        "tags": ["rectilinear", "tall-bar", "h2"],
+        "description": "Coffee table, height 2. Tall rectangular frame with the top bar at maximum height, legs run to side ports.",
+        "tags": ["rectilinear", "tall-bar", "h2", "coffee-table"],
         "segments": [
             [(0.5, 2.0), (1.5, 2.0)],            # top horizontal bar
             [(0.5, 2.0), (0.5, 0.5), (0.0, 0.5)],  # left leg → left port
@@ -484,8 +503,8 @@ MODULES: Dict[str, dict] = {
         "id": "table_h2_v5",
         "w": 2, "h": 2,
         "zone": "table",
-        "description": "Table, height 2. Full-width top bar with inward-diagonal legs that splay back out to the side ports.",
-        "tags": ["diagonal", "wide-top", "h2"],
+        "description": "Coffee table, height 2. Full-width top bar with inward-diagonal legs that splay back out to the side ports.",
+        "tags": ["diagonal", "wide-top", "h2", "coffee-table"],
         "segments": [
             [(0.0, 1.5), (2.0, 1.5)],                # top horizontal bar
             [(0.0, 1.5), (0.5, 0.5), (0.0, 0.5)],    # left diagonal leg → left port
@@ -502,8 +521,8 @@ MODULES: Dict[str, dict] = {
         "id": "table_h2_v6",
         "w": 2, "h": 2,
         "zone": "table",
-        "description": "Table, height 2. Full-width top bar at maximum height with diagonal legs splaying to side ports.",
-        "tags": ["diagonal", "wide-top", "tall-bar", "h2"],
+        "description": "Coffee table, height 2. Full-width top bar at maximum height with diagonal legs splaying to side ports.",
+        "tags": ["diagonal", "wide-top", "tall-bar", "h2", "coffee-table"],
         "segments": [
             [(0.0, 2.0), (2.0, 2.0)],                # top horizontal bar
             [(0.0, 2.0), (0.5, 0.5), (0.0, 0.5)],    # left diagonal leg → left port
@@ -600,13 +619,147 @@ MODULES: Dict[str, dict] = {
         "id": "tv_table_h3_v1",
         "w": 2, "h": 3,
         "zone": "tv_table",
-        "description": "TV table, height 3. Single polyline — backrest top through seat to left leg.",
+        "description": "TV table, height 3. Single polyline — top through high seat to left leg.",
         "tags": ["diagonal", "compact", "h3", "living"],
         "segments": [
             [(1.5, 3.0), (1.5, 2.5), (0.5, 2.5), (0.5, 0.5), (0.0, 0.5)],
         ],
         "ports": {
             "top":    [(1.5, 3.0)],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [],
+        },
+    },
+    "tv_table_h3_v2": {
+        "id": "tv_table_h3_v2",
+        "w": 2, "h": 3,
+        "zone": "tv_table",
+        "description": "TV table, height 3. Tall closed rectangular cabinet with stem and left leg.",
+        "tags": ["rectilinear", "closed", "high-detail", "h3", "living"],
+        "segments": [
+            [(1.5, 3.0), (1.5, 2.5)],
+            [(1.5, 2.5), (0.5, 2.5), (0.5, 0.5), (1.5, 0.5), (1.5, 2.5)],
+            [(0.5, 0.5), (0.0, 0.5)],
+        ],
+        "ports": {
+            "top":    [(1.5, 3.0)],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [],
+        },
+    },
+    "tv_table_h3_v3": {
+        "id": "tv_table_h3_v3",
+        "w": 2, "h": 3,
+        "zone": "tv_table",
+        "description": "TV table, height 3. Closed cabinet set lower, leaving more space above.",
+        "tags": ["rectilinear", "closed", "h3", "living"],
+        "segments": [
+            [(1.5, 3.0), (1.5, 2.0)],
+            [(1.5, 2.0), (0.5, 2.0), (0.5, 0.5), (1.5, 0.5), (1.5, 2.0)],
+            [(0.5, 0.5), (0.0, 0.5)],
+        ],
+        "ports": {
+            "top":    [(1.5, 3.0)],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [],
+        },
+    },
+    "tv_table_h3_v4": {
+        "id": "tv_table_h3_v4",
+        "w": 2, "h": 3,
+        "zone": "tv_table",
+        "description": "TV table, height 3. Diagonal from top to a lower shelf position and left leg.",
+        "tags": ["diagonal", "compact", "h3", "living"],
+        "segments": [
+            [(1.5, 3.0), (1.5, 2.0), (0.5, 2.0), (0.5, 0.5), (0.0, 0.5)],
+        ],
+        "ports": {
+            "top":    [(1.5, 3.0)],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [],
+        },
+    },
+    "tv_table_h3_v5": {
+        "id": "tv_table_h3_v5",
+        "w": 2, "h": 3,
+        "zone": "tv_table",
+        "description": "TV table, height 3. High shelf with a V-tip at the base leading to the left leg.",
+        "tags": ["angled", "v-tip", "h3", "living"],
+        "segments": [
+            [(1.5, 3.0), (1.5, 2.5), (0.5, 2.5), (1.0, 0.5), (0.0, 0.5)],
+        ],
+        "ports": {
+            "top":    [(1.5, 3.0)],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [],
+        },
+    },
+    "tv_table_h3_v6": {
+        "id": "tv_table_h3_v6",
+        "w": 2, "h": 3,
+        "zone": "tv_table",
+        "description": "TV table, height 3. Lower shelf with a V-tip at the base leading to the left leg.",
+        "tags": ["angled", "v-tip", "h3", "living"],
+        "segments": [
+            [(1.5, 3.0), (1.5, 2.0), (0.5, 2.0), (1.0, 0.5), (0.0, 0.5)],
+        ],
+        "ports": {
+            "top":    [(1.5, 3.0)],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [],
+        },
+    },
+    "tv_table_h2_v1": {
+        "id": "tv_table_h2_v1",
+        "w": 2, "h": 2,
+        "zone": "tv_table",
+        "description": "TV table, height 2. Closed rectangular cabinet with stem and left leg.",
+        "tags": ["rectilinear", "closed", "high-detail", "h2", "living"],
+        "segments": [
+            [(1.5, 2.0), (1.5, 1.5)],
+            [(1.5, 1.5), (0.5, 1.5), (0.5, 0.5), (1.5, 0.5), (1.5, 1.5)],
+            [(0.5, 0.5), (0.0, 0.5)],
+        ],
+        "ports": {
+            "top":    [(1.5, 2.0)],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [],
+        },
+    },
+    "tv_table_h2_v2": {
+        "id": "tv_table_h2_v2",
+        "w": 2, "h": 2,
+        "zone": "tv_table",
+        "description": "TV table, height 2. Single polyline from top through shelf to left leg.",
+        "tags": ["minimal", "single-line", "h2", "living"],
+        "segments": [
+            [(1.5, 2.0), (1.5, 1.5), (0.5, 1.5), (0.5, 0.5), (0.0, 0.5)],
+        ],
+        "ports": {
+            "top":    [(1.5, 2.0)],
+            "bottom": [],
+            "left":   [(0.0, 0.5)],
+            "right":  [],
+        },
+    },
+    "tv_table_h2_v3": {
+        "id": "tv_table_h2_v3",
+        "w": 2, "h": 2,
+        "zone": "tv_table",
+        "description": "TV table, height 2. Diagonal with a V-inflection at the base.",
+        "tags": ["angled", "v-tip", "h2", "living"],
+        "segments": [
+            [(1.5, 2.0), (1.5, 1.5), (0.5, 1.5), (1.0, 0.5), (0.0, 0.5)],
+        ],
+        "ports": {
+            "top":    [(1.5, 2.0)],
             "bottom": [],
             "left":   [(0.0, 0.5)],
             "right":  [],
@@ -631,8 +784,8 @@ MODULES: Dict[str, dict] = {
         "description": "Shelf, height 2. Simple U-bracket: two side posts and a top bar. Minimal open storage profile.",
         "tags": ["minimal", "u-bracket", "open"],
         "segments_fn": lambda W: [
-            [(0.5, 0.0), (0.5, 1.5)],
-            [(W-0.5, 0.0), (W-0.5, 1.5)],
+            [(0.5, 0.0), (0.5, 0.5), (0.5, 1.5)],
+            [(W-0.5, 0.0), (W-0.5, 0.5), (W-0.5, 1.5)],
             [(0.5, 1.5), (W-0.5, 1.5)],
             [(0.5, 0.5), (W-0.5, 0.5)],
         ],
@@ -783,142 +936,6 @@ MODULES: Dict[str, dict] = {
         "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W-0.5, 0.0)], "left": [], "right": []},
     },
 
-    # ── Lean-to shelf slope variants ─────────────────────────────────────────
-    # Three slopes for each lean direction (right-rising and left-rising).
-    # Eave heights are fixed; slope = (high_eave - low_eave) / (W - 1).
-    # _build_corridor_variants() auto-generates _corr_r for right-rising variants
-    # (right post endpoint at y=2.5) and _corr_l for left-rising variants.
-
-    # ── lean right: low-left → high-right (right eave fixed at y=2.5) ────────
-    "shelf_lean_r_gentle": {
-        "id": "shelf_lean_r_gentle", "w": 6, "h": 2, "zone": "shelf", "scalable": True,
-        "description": "Lean-to shelf, gentle rise left→right. Left eave y=2.0, right eave y=2.5.",
-        "tags": ["lean-to", "pitched", "gentle", "right-rise"],
-        "segments_fn": lambda W: [
-            [(0.5, 0.0), (0.5, 1.0)],
-            [(W - 0.5, 0.0), (W - 0.5, 1.5)],
-            [(0.5, 1.0), (W - 0.5, 1.5)],
-        ],
-        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W - 0.5, 0.0)], "left": [], "right": []},
-    },
-    "shelf_lean_r_steep": {
-        "id": "shelf_lean_r_steep", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
-        "description": "Lean-to shelf, steep rise left→right. Left eave y=0.5, right eave y=2.5.",
-        "tags": ["lean-to", "pitched", "steep", "right-rise"],
-        "segments_fn": lambda W: [
-            [(0.5, 0.0), (0.5, 0.5)],
-            [(W - 0.5, 0.0), (W - 0.5, 2.5)],
-            [(0.5, 0.5), (W - 0.5, 2.5)],
-        ],
-        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W - 0.5, 0.0)], "left": [], "right": []},
-    },
-
-    # ── lean left: high-left → low-right (left eave fixed at y=2.5) ──────────
-    "shelf_lean_l_gentle": {
-        "id": "shelf_lean_l_gentle", "w": 6, "h": 2, "zone": "shelf", "scalable": True,
-        "description": "Lean-to shelf, gentle rise right→left. Left eave y=2.5, right eave y=2.0.",
-        "tags": ["lean-to", "pitched", "gentle", "left-rise"],
-        "segments_fn": lambda W: [
-            [(0.5, 0.0), (0.5, 1.5)],
-            [(W - 0.5, 0.0), (W - 0.5, 1.0)],
-            [(0.5, 1.5), (W - 0.5, 1.0)],
-        ],
-        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W - 0.5, 0.0)], "left": [], "right": []},
-    },
-    "shelf_lean_l_steep": {
-        "id": "shelf_lean_l_steep", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
-        "description": "Lean-to shelf, steep rise right→left. Left eave y=2.5, right eave y=0.5.",
-        "tags": ["lean-to", "pitched", "steep", "left-rise"],
-        "segments_fn": lambda W: [
-            [(0.5, 0.0), (0.5, 2.5)],
-            [(W - 0.5, 0.0), (W - 0.5, 0.5)],
-            [(0.5, 2.5), (W - 0.5, 0.5)],
-        ],
-        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W - 0.5, 0.0)], "left": [], "right": []},
-    },
-
-    # ── Narrow-mode shelf modules ─────────────────────────────────────────────
-    # Used in 1-chair mode: one side is above the chair (open bay, post to floor),
-    # the other side is above the table (no floor connection allowed — table has no
-    # top port). The table side uses a CLOSED BRACKET instead of an open post:
-    # a 1-unit-wide closed rectangle that visually reads as a supported end without
-    # needing a floor port. All bracket vertices have degree ≥ 2 (closed loop).
-    # The corr stub at y=2.5 is added by _build_corridor_variants() as usual.
-
-    # shelf_narrow_r: chair on left, table on right (corridor_right narrow mode)
-    "shelf_narrow_r_v1": {
-        "id": "shelf_narrow_r_v1", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
-        "description": "Narrow shelf: open bay (left post) over chair, closed bracket over table.",
-        "tags": ["shelf", "narrow", "bracket", "right-corridor"],
-        "segments_fn": lambda W: [
-            [(0.5, 0.0), (0.5, 2.5)],
-            [(0.5, 2.5), (W - 0.5, 2.5)],
-            [(W - 0.5, 2.5), (W - 0.5, 1.0), (W - 1.5, 1.0), (W - 1.5, 2.5), (W - 0.5, 2.5)],
-        ],
-        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0)], "left": [], "right": []},
-    },
-    "shelf_narrow_r_v2": {
-        "id": "shelf_narrow_r_v2", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
-        "description": "Narrow shelf: open bay with mid-level shelf over chair, closed bracket over table.",
-        "tags": ["shelf", "narrow", "two-level", "bracket", "right-corridor"],
-        "segments_fn": lambda W: [
-            [(0.5, 0.0), (0.5, 1.5), (0.5, 2.5)],
-            [(0.5, 2.5), (W - 0.5, 2.5)],
-            [(0.5, 1.5), (W - 0.5, 1.5)],
-            [(W - 0.5, 2.5), (W - 0.5, 1.5), (W - 0.5, 1.0), (W - 1.5, 1.0), (W - 1.5, 2.5), (W - 0.5, 2.5)],
-        ],
-        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0)], "left": [], "right": []},
-    },
-    "shelf_narrow_r_v3": {
-        "id": "shelf_narrow_r_v3", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
-        "description": "Narrow shelf: open bay with diagonal brace over chair, closed bracket over table.",
-        "tags": ["shelf", "narrow", "diagonal", "bracket", "right-corridor"],
-        "segments_fn": lambda W: [
-            [(0.5, 0.0), (0.5, 1.0), (0.5, 2.5)],
-            [(0.5, 2.5), (W - 0.5, 2.5)],
-            [(0.5, 1.0), (W - 1.5, 2.5)],
-            [(W - 0.5, 2.5), (W - 0.5, 1.0), (W - 1.5, 1.0), (W - 1.5, 2.5), (W - 0.5, 2.5)],
-        ],
-        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0)], "left": [], "right": []},
-    },
-
-    # shelf_narrow_l: table on left, chair on right (corridor_left narrow mode)
-    "shelf_narrow_l_v1": {
-        "id": "shelf_narrow_l_v1", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
-        "description": "Narrow shelf: closed bracket over table, open bay (right post) over chair.",
-        "tags": ["shelf", "narrow", "bracket", "left-corridor"],
-        "segments_fn": lambda W: [
-            [(W - 0.5, 0.0), (W - 0.5, 2.5)],
-            [(0.5, 2.5), (W - 0.5, 2.5)],
-            [(0.5, 2.5), (0.5, 1.0), (1.5, 1.0), (1.5, 2.5), (0.5, 2.5)],
-        ],
-        "ports_fn": lambda W: {"top": [], "bottom": [(W - 0.5, 0.0)], "left": [], "right": []},
-    },
-    "shelf_narrow_l_v2": {
-        "id": "shelf_narrow_l_v2", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
-        "description": "Narrow shelf: closed bracket over table, open bay with mid-level shelf over chair.",
-        "tags": ["shelf", "narrow", "two-level", "bracket", "left-corridor"],
-        "segments_fn": lambda W: [
-            [(W - 0.5, 0.0), (W - 0.5, 1.5), (W - 0.5, 2.5)],
-            [(0.5, 2.5), (W - 0.5, 2.5)],
-            [(0.5, 1.5), (W - 0.5, 1.5)],
-            [(0.5, 2.5), (0.5, 1.5), (0.5, 1.0), (1.5, 1.0), (1.5, 2.5), (0.5, 2.5)],
-        ],
-        "ports_fn": lambda W: {"top": [], "bottom": [(W - 0.5, 0.0)], "left": [], "right": []},
-    },
-    "shelf_narrow_l_v3": {
-        "id": "shelf_narrow_l_v3", "w": 6, "h": 3, "zone": "shelf", "scalable": True,
-        "description": "Narrow shelf: closed bracket over table, open bay with diagonal brace over chair.",
-        "tags": ["shelf", "narrow", "diagonal", "bracket", "left-corridor"],
-        "segments_fn": lambda W: [
-            [(W - 0.5, 0.0), (W - 0.5, 1.0), (W - 0.5, 2.5)],
-            [(0.5, 2.5), (W - 0.5, 2.5)],
-            [(W - 0.5, 1.0), (1.5, 2.5)],
-            [(0.5, 2.5), (0.5, 1.0), (1.5, 1.0), (1.5, 2.5), (0.5, 2.5)],
-        ],
-        "ports_fn": lambda W: {"top": [], "bottom": [(W - 0.5, 0.0)], "left": [], "right": []},
-    },
-
     # ── Corridor modules ──────────────────────────────────────────────────────
     "corridor_right": {
         "id": "corridor_right", "w": 2, "h": 6, "zone": "corridor_right", "h_scalable": True,
@@ -948,54 +965,38 @@ MODULES: Dict[str, dict] = {
         "wh_segments_fn": lambda w, H: _spacious_segs(w, H, "left"),
         "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [], "right": [(w, 0.5), (w, H - 0.5)]},
     },
-
-    # ── Lean-to corridor modules ──────────────────────────────────────────────
-    # Inner wall (dining side) top = H-0.5 (high port, connects to shelf eave).
-    # Outer wall tops at max(H-0.5-drop, 6.0) — never lower than y=6.
-    # Three drop variants give different slopes; solver picks randomly by seed.
-    # All share identical ports with the standard corridor so zone rules are
-    # reused without change.
-    "corridor_right_lean_v1": {
-        "id": "corridor_right_lean_v1", "w": 2, "h": 6, "zone": "corridor_right", "h_scalable": True,
-        "description": "Corridor right, lean-to — gentle slope (outer drops 1 unit below inner).",
-        "tags": ["corridor", "circulation", "h-scalable", "right-side", "lean-to"],
-        "wh_segments_fn": lambda w, H: _lean_segs(w, H, "right", 1.0),
-        "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [(0.0, 0.5), (0.0, H - 0.5)], "right": []},
+    # Short spacious — same internal shelf structure but no top arm; outer wall rises
+    # to y=H (module height = H_solve) to connect to the full-width shelf above.
+    "corridor_right_spacious_short": {
+        "id": "corridor_right_spacious_short", "w": 4, "h": 6, "zone": "corridor_right", "h_scalable": True,
+        "description": "Spacious short corridor right — internal shelves + outer wall to shelf; left port at y=0.5.",
+        "tags": ["corridor", "h-scalable", "right-side", "spacious", "short"],
+        "wh_segments_fn": lambda w, H: _spacious_short_segs(w, H, "right"),
+        "wh_ports_fn":    lambda w, H: {"top": [(w - 0.5, H)], "bottom": [], "left": [(0.0, 0.5)], "right": []},
     },
-    "corridor_right_lean_v2": {
-        "id": "corridor_right_lean_v2", "w": 2, "h": 6, "zone": "corridor_right", "h_scalable": True,
-        "description": "Corridor right, lean-to — medium slope (outer drops 2 units below inner).",
-        "tags": ["corridor", "circulation", "h-scalable", "right-side", "lean-to"],
-        "wh_segments_fn": lambda w, H: _lean_segs(w, H, "right", 2.0),
-        "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [(0.0, 0.5), (0.0, H - 0.5)], "right": []},
+    "corridor_left_spacious_short": {
+        "id": "corridor_left_spacious_short", "w": 4, "h": 6, "zone": "corridor_left", "h_scalable": True,
+        "description": "Spacious short corridor left — internal shelves + outer wall to shelf; right port at y=0.5.",
+        "tags": ["corridor", "h-scalable", "left-side", "spacious", "short"],
+        "wh_segments_fn": lambda w, H: _spacious_short_segs(w, H, "left"),
+        "wh_ports_fn":    lambda w, H: {"top": [(0.5, H)], "bottom": [], "left": [], "right": [(w, 0.5)]},
     },
-    "corridor_right_lean_v3": {
-        "id": "corridor_right_lean_v3", "w": 2, "h": 6, "zone": "corridor_right", "h_scalable": True,
-        "description": "Corridor right, lean-to — steep slope (outer drops 3 units below inner).",
-        "tags": ["corridor", "circulation", "h-scalable", "right-side", "lean-to"],
-        "wh_segments_fn": lambda w, H: _lean_segs(w, H, "right", 3.0),
-        "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [(0.0, 0.5), (0.0, H - 0.5)], "right": []},
+    # Short corridor variants — L-shaped wall: floor arm connects to chair, right/left
+    # outer wall rises to shelf. chair_right_corr / chair_left_corr variants supply
+    # the matching port on the inner zone side.
+    "corridor_right_short": {
+        "id": "corridor_right_short", "w": 2, "h": 6, "zone": "corridor_right", "h_scalable": True,
+        "description": "Short corridor right — floor + right wall; left port connects to chair_right_corr.",
+        "tags": ["corridor", "h-scalable", "right-side", "short"],
+        "wh_segments_fn": lambda w, H: [[(0.0, 0.5), (w - 0.5, 0.5), (w - 0.5, H)]],
+        "wh_ports_fn":    lambda w, H: {"top": [(w - 0.5, H)], "bottom": [], "left": [(0.0, 0.5)], "right": []},
     },
-    "corridor_left_lean_v1": {
-        "id": "corridor_left_lean_v1", "w": 2, "h": 6, "zone": "corridor_left", "h_scalable": True,
-        "description": "Corridor left, lean-to — gentle slope (outer drops 1 unit below inner).",
-        "tags": ["corridor", "circulation", "h-scalable", "left-side", "lean-to"],
-        "wh_segments_fn": lambda w, H: _lean_segs(w, H, "left", 1.0),
-        "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [], "right": [(w, 0.5), (w, H - 0.5)]},
-    },
-    "corridor_left_lean_v2": {
-        "id": "corridor_left_lean_v2", "w": 2, "h": 6, "zone": "corridor_left", "h_scalable": True,
-        "description": "Corridor left, lean-to — medium slope (outer drops 2 units below inner).",
-        "tags": ["corridor", "circulation", "h-scalable", "left-side", "lean-to"],
-        "wh_segments_fn": lambda w, H: _lean_segs(w, H, "left", 2.0),
-        "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [], "right": [(w, 0.5), (w, H - 0.5)]},
-    },
-    "corridor_left_lean_v3": {
-        "id": "corridor_left_lean_v3", "w": 2, "h": 6, "zone": "corridor_left", "h_scalable": True,
-        "description": "Corridor left, lean-to — steep slope (outer drops 3 units below inner).",
-        "tags": ["corridor", "circulation", "h-scalable", "left-side", "lean-to"],
-        "wh_segments_fn": lambda w, H: _lean_segs(w, H, "left", 3.0),
-        "wh_ports_fn":    lambda w, H: {"top": [], "bottom": [], "left": [], "right": [(w, 0.5), (w, H - 0.5)]},
+    "corridor_left_short": {
+        "id": "corridor_left_short", "w": 2, "h": 6, "zone": "corridor_left", "h_scalable": True,
+        "description": "Short corridor left — floor + left wall; right port connects to chair_left_corr.",
+        "tags": ["corridor", "h-scalable", "left-side", "short"],
+        "wh_segments_fn": lambda w, H: [[(w, 0.5), (0.5, 0.5), (0.5, H)]],
+        "wh_ports_fn":    lambda w, H: {"top": [(0.5, H)], "bottom": [], "left": [], "right": [(w, 0.5)]},
     },
 
     # ── Kitchen: lower cabinet ────────────────────────────────────────────────
@@ -1105,8 +1106,6 @@ ZONES = [
             "shelf_h1_v1",
             "shelf_h2_v1", "shelf_h2_v2", "shelf_h2_v3", "shelf_h2_v4", "shelf_h2_v5",
             "shelf_h3_v1", "shelf_h3_v2",
-            "shelf_lean_r_gentle", "shelf_lean_r_steep",
-            "shelf_lean_l_gentle", "shelf_lean_l_steep",
             "shelf_pitched_sym_v1",   "shelf_pitched_sym_v2",
             "shelf_pitched_left_v1",  "shelf_pitched_left_v2",
             "shelf_pitched_right_v1", "shelf_pitched_right_v2",
@@ -1214,37 +1213,22 @@ _CR_CORR   = [m.replace("chair_right_", "chair_right_corr_") for m in ZONES[2]["
 _SH_CORR_R = [m + "_corr_r" for m in ZONES[3]["modules"] if m + "_corr_r" in MODULES]
 _SH_CORR_L = [m + "_corr_l" for m in ZONES[3]["modules"] if m + "_corr_l" in MODULES]
 
-_SH_NARROW_CORR_R = [m + "_corr_r" for m in
-                     ["shelf_narrow_r_v1", "shelf_narrow_r_v2", "shelf_narrow_r_v3"]
-                     if m + "_corr_r" in MODULES]
-_SH_NARROW_CORR_L = [m + "_corr_l" for m in
-                     ["shelf_narrow_l_v1", "shelf_narrow_l_v2", "shelf_narrow_l_v3"]
-                     if m + "_corr_l" in MODULES]
+# ── Full-roof corridor zone configs ───────────────────────────────────────────
+# Shelf is placed separately by the solver (full section width, above the short
+# corridor). chair_right_corr / chair_left_corr variants have the extra stub that
+# matches the short corridor's boundary port.
+ZONES_FULL_ROOF_CORR_RIGHT = [ZONES[0], ZONES[1], {**ZONES[2], "modules": _CR_CORR}]
+ZONES_FULL_ROOF_CORR_LEFT  = [{**ZONES[0], "modules": _CL_CORR}, ZONES[1], ZONES[2]]
 
-ZONES_CORR_RIGHT = [
-    ZONES[0],
-    ZONES[1],
-    {**ZONES[2], "modules": _CR_CORR},
-    {**ZONES[3], "modules": _SH_CORR_R},
+# 1-chair variants: single chair + table, no second chair; table shifted flush
+# against the corridor boundary.
+ZONES_FULL_ROOF_CORR_RIGHT_1CHAIR = [
+    ZONES[0],                            # chair_left at "first 2"
+    {**ZONES[1], "x_rule": ["last 2"]},  # table at "last 2" (adj to corridor)
 ]
-
-ZONES_CORR_LEFT = [
-    {**ZONES[0], "modules": _CL_CORR},
-    ZONES[1],
-    ZONES[2],
-    {**ZONES[3], "modules": _SH_CORR_L},
-]
-
-ZONES_CORR_RIGHT_NARROW = [
-    ZONES[0],
-    {**ZONES[1], "x_rule": ["last 2"]},
-    {**ZONES[3], "modules": _SH_NARROW_CORR_R},
-]
-
-ZONES_CORR_LEFT_NARROW = [
-    {**ZONES[1], "x_rule": ["first 2"]},
-    ZONES[2],
-    {**ZONES[3], "modules": _SH_NARROW_CORR_L},
+ZONES_FULL_ROOF_CORR_LEFT_1CHAIR = [
+    {**ZONES[1], "x_rule": ["first 2"]}, # table at "first 2" (adj to corridor)
+    ZONES[2],                            # chair_right at "last 2"
 ]
 
 # ── Table module groups ───────────────────────────────────────────────────────
@@ -1253,16 +1237,18 @@ ZONES_CORR_LEFT_NARROW = [
 _TABLE_COMPACT  = [m for m in ZONES[1]["modules"] if "wide-top" not in MODULES[m]["tags"]]
 _TABLE_SPACIOUS = [m for m in ZONES[1]["modules"] if "wide-top"     in MODULES[m]["tags"]]
 
+# Living coffee-table groups — same wide-top split, applied to LIVING_ZONES table zone.
+# Compact (inner_W=7): sofa+table+tv_table flush, table at "from 3 size 2".
+# Spacious (inner_W=9): 1-col gap each side, table at "from 4 size 2".
+
 # ── Shelf style groups (for dining roof_style filter) ────────────────────────
 # plain:   flat horizontal bar (h=1 or h=2 symmetric)
 # divided: internal subdivisions or hatching
-# pitched: lean-to or gable ridge
+# pitched: gable ridge
 _SHELF_PLANE   = ["shelf_h1_v1", "shelf_h2_v1"]
 _SHELF_DIVIDED = ["shelf_h3_v1", "shelf_h3_v2", "shelf_h2_v4", "shelf_h2_v5"]
 _SHELF_PITCHED = [
     "shelf_h2_v2", "shelf_h2_v3",
-    "shelf_lean_r_gentle", "shelf_lean_r_steep",
-    "shelf_lean_l_gentle", "shelf_lean_l_steep",
     "shelf_pitched_sym_v1",   "shelf_pitched_sym_v2",
     "shelf_pitched_left_v1",  "shelf_pitched_left_v2",
     "shelf_pitched_right_v1", "shelf_pitched_right_v2",
@@ -1273,12 +1259,31 @@ _SHELF_CATEGORY: dict = {
     **{m: "plain"   for m in _SHELF_PLANE},
     **{m: "divided" for m in _SHELF_DIVIDED},
     **{m: "pitched" for m in _SHELF_PITCHED},
-    "shelf_narrow_r_v1": "plain",   "shelf_narrow_l_v1": "plain",
-    "shelf_narrow_r_v2": "divided", "shelf_narrow_l_v2": "divided",
-    "shelf_narrow_r_v3": "pitched", "shelf_narrow_l_v3": "pitched",
 }
 
 # ── Kitchen zone configurations ───────────────────────────────────────────────
+
+# Inner zones (no shelf) — used in full-roof corridor path.
+# upper_cabinet uses "from 3 to last 0" so it adapts to any H_solve.
+# kitchen_wall uses "full" so it spans all of H_solve.
+KITCHEN_ZONES_INNER = [
+    {"id": "lower_cabinet", "x_rule": ["first 3"], "y_rule": ["first 3"],          "modules": ["kitchen_lower_w3_h4_v2"]},
+    {"id": "upper_cabinet", "x_rule": ["first 2"], "y_rule": ["from 3 to last 0"], "modules": ["kitchen_upper_w2"]},
+    {"id": "kitchen_wall",  "x_rule": ["last 2"],  "y_rule": ["full"],              "modules": ["kitchen_wall"]},
+]
+
+KITCHEN_ZONES_INNER_CORR_RIGHT = [
+    KITCHEN_ZONES_INNER[0],
+    KITCHEN_ZONES_INNER[1],
+    {**KITCHEN_ZONES_INNER[2], "modules": ["kitchen_wall_corr_r"]},
+]
+
+KITCHEN_ZONES_INNER_CORR_LEFT = [
+    {**KITCHEN_ZONES_INNER[0], "modules": ["kitchen_lower_w3_h4_v2_corr_l"]},
+    KITCHEN_ZONES_INNER[1],
+    KITCHEN_ZONES_INNER[2],
+]
+
 KITCHEN_ZONES = [
     {
         "id":      "shelf",
@@ -1331,12 +1336,11 @@ _KZ_WALL_H3     = {"id": "kitchen_wall",  "x_rule": ["last 2"],  "y_rule": ["ski
 
 _KITCHEN_SHELF_H2 = [
     "shelf_h2_v1", "shelf_h2_v2", "shelf_h2_v3", "shelf_h2_v4",
-    "shelf_lean_r_gentle", "shelf_lean_l_gentle",
     "shelf_pitched_sym_v1", "shelf_pitched_sym_v2",
     "shelf_pitched_left_v1", "shelf_pitched_left_v2",
     "shelf_pitched_right_v1", "shelf_pitched_right_v2",
 ]
-_KITCHEN_SHELF_H3 = ["shelf_h3_v1", "shelf_lean_r_steep", "shelf_lean_l_steep"]
+_KITCHEN_SHELF_H3 = ["shelf_h3_v1", "shelf_h3_v2"]
 
 _KITCHEN_SHELF_H2_CORR_R = [m + "_corr_r" for m in _KITCHEN_SHELF_H2 if m + "_corr_r" in MODULES]
 _KITCHEN_SHELF_H2_CORR_L = [m + "_corr_l" for m in _KITCHEN_SHELF_H2 if m + "_corr_l" in MODULES]
@@ -1372,7 +1376,7 @@ KITCHEN_ZONES_CORR_LEFT_SHELF_H3 = [
 # sofa ≡ chair_left (left zone), tv_table ≡ chair_right (right zone).
 # Living is 8 cols wide; sofa/table/tv_table each occupy 2 cols with filler gaps.
 _SOFA_CORR_L    = [m for m in ["sofa_corr_h3_v1"] if m in MODULES]
-_TV_CORR_R      = [m for m in ["tv_table_corr_h3_v1"] if m in MODULES]
+_TV_CORR_R      = [m for m in MODULES if m.startswith("tv_table_corr_")]
 
 LIVING_ZONES = [
     {
@@ -1387,13 +1391,20 @@ LIVING_ZONES = [
     },
     {
         "id": "tv_table", "x_rule": ["last 2"], "y_rule": ["first 3", "first 2"],
-        "modules": ["tv_table_h3_v1"],
+        "modules": [
+            "tv_table_h3_v1", "tv_table_h3_v2", "tv_table_h3_v3",
+            "tv_table_h3_v4", "tv_table_h3_v5", "tv_table_h3_v6",
+            "tv_table_h2_v1", "tv_table_h2_v2", "tv_table_h2_v3",
+        ],
     },
     {
         "id": "shelf", "x_rule": ["full"], "y_rule": ["last 1", "last 2", "last 3", "last 4"],
         "modules": ZONES[3]["modules"],
     },
 ]
+
+_TABLE_COMPACT_LIVING  = [m for m in LIVING_ZONES[1]["modules"] if "wide-top" not in MODULES[m]["tags"]]
+_TABLE_SPACIOUS_LIVING = [m for m in LIVING_ZONES[1]["modules"] if "wide-top"     in MODULES[m]["tags"]]
 
 LIVING_ZONES_CORR_RIGHT = [
     LIVING_ZONES[0],
@@ -1407,6 +1418,21 @@ LIVING_ZONES_CORR_LEFT = [
     LIVING_ZONES[1],
     LIVING_ZONES[2],
     {**LIVING_ZONES[3], "modules": _SH_CORR_L},
+]
+
+# Inner zones (no shelf) — for full-roof corridor path.
+LIVING_ZONES_INNER = [LIVING_ZONES[0], LIVING_ZONES[1], LIVING_ZONES[2]]
+
+LIVING_ZONES_INNER_CORR_RIGHT = [
+    LIVING_ZONES[0],
+    LIVING_ZONES[1],
+    {**LIVING_ZONES[2], "modules": _TV_CORR_R or ["tv_table_h3_v1"]},
+]
+
+LIVING_ZONES_INNER_CORR_LEFT = [
+    {**LIVING_ZONES[0], "modules": _SOFA_CORR_L or ["sofa_h3_v1"]},
+    LIVING_ZONES[1],
+    LIVING_ZONES[2],
 ]
 
 # Used by drawing.py to order zones in the module library view
