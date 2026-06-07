@@ -306,7 +306,8 @@ def _make_full_roof_shelf(shelf_mid: str, W: int, x_post: float) -> str:
 
 def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2,
           dining_style: str = "compact", roof_style: str = "any",
-          section: str = "dining") -> Optional[List[dict]]:
+          section: str = "dining",
+          preferred_tags: list | None = None) -> Optional[List[dict]]:
     """
     Two-phase backtracking solver.
     Phase 1: place named zone modules (chair, table, shelf, …).
@@ -595,9 +596,26 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
     else:
         H_solve = H
 
-    reg_candidates: List[List[dict]] = []
-    for zone in active_zones:
-        options: List[dict] = []
+    _ZONE_TAG_MAP: dict = {
+        "low_furniture":  {"chair_left": "h2", "chair_right": "h2", "table": "h2"},
+        "tall_furniture": {"chair_left": "h3", "chair_right": "h3", "table": "h3"},
+        "low_chairs":     {"chair_left": "h2", "chair_right": "h2"},
+        "tall_chairs":    {"chair_left": "h3", "chair_right": "h3"},
+        "low_table":      {"table": "h2"},
+        "tall_table":     {"table": "h3"},
+    }
+
+    def _zone_require_tag(zone_id: str) -> str | None:
+        for t in (preferred_tags or []):
+            req = _ZONE_TAG_MAP.get(t, {}).get(zone_id)
+            if req:
+                return req
+        return None
+
+    def _build_options(zone: dict) -> List[dict]:
+        opts: List[dict] = []
+        zone_id    = zone.get("id", "")
+        req_tag    = _zone_require_tag(zone_id)
         for xr in zone["x_rule"]:
             for yr in zone["y_rule"]:
                 res = resolve_zone_position(zone, inner_W, H_solve, xr, yr)
@@ -605,12 +623,38 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
                 for mid in zone["modules"]:
                     m = MODULES[mid]
                     if (m.get("scalable") or m["w"] == w) and (m.get("h_scalable") or m["h"] == h):
-                        options.append({
+                        if req_tag and req_tag not in m.get("tags", []):
+                            continue
+                        opts.append({
                             "module_id": mid,
                             "x_off": res["x_off"] + x_offset,
                             "y_off": res["y_off"],
                             "w": w, "h": h,
                         })
+        return opts
+
+    def _build_options_unfiltered(zone: dict) -> List[dict]:
+        opts: List[dict] = []
+        for xr in zone["x_rule"]:
+            for yr in zone["y_rule"]:
+                res = resolve_zone_position(zone, inner_W, H_solve, xr, yr)
+                w, h = res["w"], res["h"]
+                for mid in zone["modules"]:
+                    m = MODULES[mid]
+                    if (m.get("scalable") or m["w"] == w) and (m.get("h_scalable") or m["h"] == h):
+                        opts.append({
+                            "module_id": mid,
+                            "x_off": res["x_off"] + x_offset,
+                            "y_off": res["y_off"],
+                            "w": w, "h": h,
+                        })
+        return opts
+
+    reg_candidates: List[List[dict]] = []
+    for zone in active_zones:
+        options = _build_options(zone)
+        if not options and _zone_require_tag(zone.get("id", "")):
+            options = _build_options_unfiltered(zone)  # fallback
         rng.shuffle(options)
         reg_candidates.append(options)
 
@@ -649,7 +693,9 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
         if cl is None or cr is None:
             return True
         ml, mr = MODULES[cl["module_id"]], MODULES[cr["module_id"]]
-        return cl["h"] == cr["h"] and _seat_y(ml) == _seat_y(mr)
+        return (cl["h"] == cr["h"]
+                and _seat_y(ml) == _seat_y(mr)
+                and set(ml["tags"]) == set(mr["tags"]))
 
     def bt_reg(i: int) -> bool:
         if i == len(reg_candidates):

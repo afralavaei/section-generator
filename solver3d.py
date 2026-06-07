@@ -197,7 +197,8 @@ def _chairs_same_height_3d(placed: List[dict]) -> bool:
                if MODULES_3D[p["module_id"]]["zone"] == "chair_right"), None)
     if cl is None or cr is None:
         return True
-    return cl["h"] == cr["h"]
+    ml, mr = MODULES_3D[cl["module_id"]], MODULES_3D[cr["module_id"]]
+    return cl["h"] == cr["h"] and set(ml["tags"]) == set(mr["tags"])
 
 
 # ── Module candidate eligibility ──────────────────────────────────────────────
@@ -304,6 +305,7 @@ def solve3d(W: int, H: int, D: int, seed: int,
             corridor: str = "none", corridor_w: int = 2,
             dining_style: str = "compact", roof_style: str = "any",
             section: str = "dining",
+            preferred_tags: list | None = None,
             ) -> Optional[List[dict]]:
     """Two-phase backtracking, same shape as solver.solve, with depth D added."""
     rng = random.Random(seed)
@@ -455,9 +457,26 @@ def solve3d(W: int, H: int, D: int, seed: int,
             ]
 
     # Pre-compute candidate options per zone
-    reg_candidates: List[List[dict]] = []
-    for zone in active_zones:
-        options: List[dict] = []
+    _ZONE_TAG_MAP: dict = {
+        "low_furniture":  {"chair_left": "h2", "chair_right": "h2", "table": "h2"},
+        "tall_furniture": {"chair_left": "h3", "chair_right": "h3", "table": "h3"},
+        "low_chairs":     {"chair_left": "h2", "chair_right": "h2"},
+        "tall_chairs":    {"chair_left": "h3", "chair_right": "h3"},
+        "low_table":      {"table": "h2"},
+        "tall_table":     {"table": "h3"},
+    }
+
+    def _zone_require_tag_3d(zone_id: str) -> str | None:
+        for t in (preferred_tags or []):
+            req = _ZONE_TAG_MAP.get(t, {}).get(zone_id)
+            if req:
+                return req
+        return None
+
+    def _build_options_3d(zone: dict) -> List[dict]:
+        opts: List[dict] = []
+        zone_id = zone.get("id", "")
+        req_tag = _zone_require_tag_3d(zone_id)
         for xr in zone["x_rule"]:
             for yr in zone["y_rule"]:
                 for zr in zone.get("z_rule", ["full"]):
@@ -466,13 +485,41 @@ def solve3d(W: int, H: int, D: int, seed: int,
                     for mid in zone["modules"]:
                         m = MODULES_3D[mid]
                         if _module_fits(m, w, h, d):
-                            options.append({
+                            if req_tag and req_tag not in m.get("tags", []):
+                                continue
+                            opts.append({
                                 "module_id": mid,
                                 "x_off": res["x_off"] + x_offset,
                                 "y_off": res["y_off"],
                                 "z_off": res["z_off"],
                                 "w": w, "h": h, "d": d,
                             })
+        return opts
+
+    def _build_options_3d_unfiltered(zone: dict) -> List[dict]:
+        opts: List[dict] = []
+        for xr in zone["x_rule"]:
+            for yr in zone["y_rule"]:
+                for zr in zone.get("z_rule", ["full"]):
+                    res = resolve_zone_position_3d(zone, inner_W, H_inner, D, xr, yr, zr)
+                    w, h, d = res["w"], res["h"], res["d"]
+                    for mid in zone["modules"]:
+                        m = MODULES_3D[mid]
+                        if _module_fits(m, w, h, d):
+                            opts.append({
+                                "module_id": mid,
+                                "x_off": res["x_off"] + x_offset,
+                                "y_off": res["y_off"],
+                                "z_off": res["z_off"],
+                                "w": w, "h": h, "d": d,
+                            })
+        return opts
+
+    reg_candidates: List[List[dict]] = []
+    for zone in active_zones:
+        options = _build_options_3d(zone)
+        if not options and _zone_require_tag_3d(zone.get("id", "")):
+            options = _build_options_3d_unfiltered(zone)  # fallback
         rng.shuffle(options)
         reg_candidates.append(options)
 
