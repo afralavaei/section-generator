@@ -14,9 +14,9 @@ FACES_3D = ("left", "right", "bottom", "top", "front", "back")
 # ── Helpers: lift 2D geometry to 3D at import time ───────────────────────────
 
 def _lift2d(segs_2d: list, d: int = 3, ex: set = None) -> list:
-    """Convert 2D segments to 3D: front profile at z=1, back at z=d-1.
+    """Convert 2D segments to 3D: front profile at z=0.5, back at z=d-0.5.
     z-connectors are added at every unique vertex NOT in ex (port exclusion set)."""
-    z0, z1 = 1.0, float(d) - 1.0
+    z0, z1 = 0.5, float(d) - 0.5
     segs_3d = []
     unique_pts: set = set()
     for seg in segs_2d:
@@ -32,8 +32,8 @@ def _lift2d(segs_2d: list, d: int = 3, ex: set = None) -> list:
 
 
 def _ports_lift(ports_2d: dict, d: int = 3) -> dict:
-    """Lift 2D port dict to 3D — each (x,y) port becomes (x,y,1) and (x,y,d-1)."""
-    z0, z1 = 1.0, float(d) - 1.0
+    """Lift 2D port dict to 3D — each (x,y) port becomes (x,y,0.5) and (x,y,d-0.5)."""
+    z0, z1 = 0.5, float(d) - 0.5
     out: dict = {}
     for face in ("left", "right", "top", "bottom"):
         pts = ports_2d.get(face, [])
@@ -44,17 +44,17 @@ def _ports_lift(ports_2d: dict, d: int = 3) -> dict:
 
 
 def _scale_segs_d(segs: list, old_d: int, new_d: int) -> list:
-    """Remap z=back-plane coordinate from old_d to new_d; z=front stays at 1.0."""
-    z_old = float(old_d) - 1.0
-    z_new = float(new_d) - 1.0
+    """Remap z=back-plane coordinate from old_d to new_d; z=front stays at 0.5."""
+    z_old = float(old_d) - 0.5
+    z_new = float(new_d) - 0.5
     def rz(z): return z_new if abs(z - z_old) < 1e-9 else z
     return [[(x, y, rz(z)) for x, y, z in seg] for seg in segs]
 
 
 def _scale_ports_d(ports: dict, old_d: int, new_d: int) -> dict:
     """Remap z=back-plane coordinate in a ports dict from old_d to new_d."""
-    z_old = float(old_d) - 1.0
-    z_new = float(new_d) - 1.0
+    z_old = float(old_d) - 0.5
+    z_new = float(new_d) - 0.5
     def rz(z): return z_new if abs(z - z_old) < 1e-9 else z
     return {face: [(x, y, rz(z)) for x, y, z in pts] for face, pts in ports.items()}
 
@@ -70,17 +70,17 @@ MODULES_3D: Dict[str, dict] = {
         "w": 2, "h": 2, "d": 3,
         "zone":        "chair_left",
         "description": "Left-facing chair, native 3D from Rhino.",
-        "tags":        ["native3d", "chair_left"],
+        "tags":        ["native3d", "chair_left", "h2"],
         "segments": [
-            [(0.5, 2.0, 1.0), (0.5, 1.5, 1.0), (1.5, 1.5, 1.0), (1.0, 0.5, 1.5)],
-            [(0.5, 1.5, 1.0), (0.5, 1.5, 2.0)],
-            [(0.5, 2.0, 2.0), (0.5, 1.5, 2.0), (1.5, 1.5, 2.0), (1.0, 0.5, 1.5)],
-            [(1.5, 1.5, 1.0), (1.5, 1.5, 2.0)],
+            [(0.5, 2.0, 0.5), (0.5, 1.5, 0.5), (1.5, 1.5, 0.5), (1.0, 0.5, 1.5)],
+            [(0.5, 1.5, 0.5), (0.5, 1.5, 2.5)],
+            [(0.5, 2.0, 2.5), (0.5, 1.5, 2.5), (1.5, 1.5, 2.5), (1.0, 0.5, 1.5)],
+            [(1.5, 1.5, 0.5), (1.5, 1.5, 2.5)],
             [(1.0, 0.5, 1.5), (2.0, 0.5, 1.5)],
         ],
         "ports": {
             "left":   [], "right":  [(2.0, 0.5, 1.5)],
-            "bottom": [], "top":    [(0.5, 2.0, 1.0), (0.5, 2.0, 2.0)],
+            "bottom": [], "top":    [(0.5, 2.0, 0.5), (0.5, 2.0, 2.5)],
             "front":  [], "back":   [],
         },
     },
@@ -90,17 +90,17 @@ MODULES_3D: Dict[str, dict] = {
         "w": 2, "h": 2, "d": 3,
         "zone":        "chair_right",
         "description": "Right-facing chair, native 3D from Rhino.",
-        "tags":        ["native3d", "chair_right"],
+        "tags":        ["native3d", "chair_right", "h2"],
         "segments": [
-            [(1.0, 0.5, 1.5), (0.5, 1.5, 2.0), (1.5, 1.5, 2.0), (1.5, 2.0, 2.0)],
-            [(0.5, 1.5, 1.0), (0.5, 1.5, 2.0)],
-            [(1.0, 0.5, 1.5), (0.5, 1.5, 1.0), (1.5, 1.5, 1.0), (1.5, 2.0, 1.0)],
-            [(1.5, 1.5, 1.0), (1.5, 1.5, 2.0)],
+            [(1.0, 0.5, 1.5), (0.5, 1.5, 2.5), (1.5, 1.5, 2.5), (1.5, 2.0, 2.5)],
+            [(0.5, 1.5, 0.5), (0.5, 1.5, 2.5)],
+            [(1.0, 0.5, 1.5), (0.5, 1.5, 0.5), (1.5, 1.5, 0.5), (1.5, 2.0, 0.5)],
+            [(1.5, 1.5, 0.5), (1.5, 1.5, 2.5)],
             [(1.0, 0.5, 1.5), (0.0, 0.5, 1.5)],
         ],
         "ports": {
             "left":   [(0.0, 0.5, 1.5)], "right":  [],
-            "bottom": [],                "top":    [(1.5, 2.0, 1.0), (1.5, 2.0, 2.0)],
+            "bottom": [],                "top":    [(1.5, 2.0, 0.5), (1.5, 2.0, 2.5)],
             "front":  [],                "back":   [],
         },
     },
@@ -112,7 +112,7 @@ MODULES_3D: Dict[str, dict] = {
         "w": 2, "h": 3, "d": 3,
         "zone":        "table",
         "description": "Dining table, native 3D from Rhino.",
-        "tags":        ["native3d", "table"],
+        "tags":        ["native3d", "table", "h3"],
         "segments": [
             [(1.5, 2.5, 2.5), (1.0, 0.5, 2.0), (0.5, 2.5, 2.5), (1.5, 2.5, 2.5)],
             [(0.5, 2.5, 0.5), (0.5, 2.5, 2.5)],
@@ -138,17 +138,19 @@ MODULES_3D: Dict[str, dict] = {
         "description": "Full-width roof, native 3D from Rhino.",
         "tags":        ["native3d", "roof"],
         "segments": [
-            [(0.5, 2.5, 2.0), (2.5, 2.5, 1.5), (0.5, 2.5, 1.0)],
-            [(0.5, 2.5, 2.0), (0.5, 0.0, 2.0)],
-            [(0.5, 2.5, 1.0), (0.5, 0.0, 1.0)],
+            [(0.5, 2.5, 2.5), (2.5, 2.5, 1.5), (0.5, 2.5, 0.5)],
+            [(0.5, 2.5, 2.5), (0.5, 0.0, 2.5)],
+            [(0.5, 2.5, 0.5), (0.5, 0.0, 0.5)],
+            [(0.5, 0.0, 0.5), (0.5, 0.0, 2.5)],
             [(2.5, 2.5, 1.5), (3.5, 2.5, 1.5)],
-            [(5.5, 2.5, 2.0), (3.5, 2.5, 1.5), (5.5, 2.5, 1.0)],
-            [(5.5, 0.0, 2.0), (5.5, 2.5, 2.0)],
-            [(5.5, 0.0, 1.0), (5.5, 2.5, 1.0)],
+            [(5.5, 2.5, 2.5), (3.5, 2.5, 1.5), (5.5, 2.5, 0.5)],
+            [(5.5, 0.0, 2.5), (5.5, 2.5, 2.5)],
+            [(5.5, 0.0, 0.5), (5.5, 2.5, 0.5)],
+            [(5.5, 0.0, 0.5), (5.5, 0.0, 2.5)],
         ],
         "ports": {
             "left":   [], "right":  [],
-            "bottom": [(0.5, 0.0, 1.0), (0.5, 0.0, 2.0), (5.5, 0.0, 1.0), (5.5, 0.0, 2.0)],
+            "bottom": [(0.5, 0.0, 0.5), (0.5, 0.0, 2.5), (5.5, 0.0, 0.5), (5.5, 0.0, 2.5)],
             "top":    [],
             "front":  [], "back":   [],
         },
@@ -163,13 +165,13 @@ MODULES_3D: Dict[str, dict] = {
         "description": "Bridges chair_left top to roof bottom (left side).",
         "tags":        ["native3d", "connector"],
         "segments": [
-            [(0.5, 0.0, 1.0), (0.5, 1.0, 1.0)],
-            [(0.5, 0.0, 2.0), (0.5, 1.0, 2.0)],
+            [(0.5, 0.0, 0.5), (0.5, 1.0, 0.5)],
+            [(0.5, 0.0, 2.5), (0.5, 1.0, 2.5)],
         ],
         "ports": {
             "left":   [], "right":  [],
-            "bottom": [(0.5, 0.0, 1.0), (0.5, 0.0, 2.0)],
-            "top":    [(0.5, 1.0, 1.0), (0.5, 1.0, 2.0)],
+            "bottom": [(0.5, 0.0, 0.5), (0.5, 0.0, 2.5)],
+            "top":    [(0.5, 1.0, 0.5), (0.5, 1.0, 2.5)],
             "front":  [], "back":   [],
         },
     },
@@ -181,13 +183,13 @@ MODULES_3D: Dict[str, dict] = {
         "description": "Bridges chair_right top to roof bottom (right side).",
         "tags":        ["native3d", "connector"],
         "segments": [
-            [(1.5, 0.0, 1.0), (1.5, 1.0, 1.0)],
-            [(1.5, 0.0, 2.0), (1.5, 1.0, 2.0)],
+            [(1.5, 0.0, 0.5), (1.5, 1.0, 0.5)],
+            [(1.5, 0.0, 2.5), (1.5, 1.0, 2.5)],
         ],
         "ports": {
             "left":   [], "right":  [],
-            "bottom": [(1.5, 0.0, 1.0), (1.5, 0.0, 2.0)],
-            "top":    [(1.5, 1.0, 1.0), (1.5, 1.0, 2.0)],
+            "bottom": [(1.5, 0.0, 0.5), (1.5, 0.0, 2.5)],
+            "top":    [(1.5, 1.0, 0.5), (1.5, 1.0, 2.5)],
             "front":  [], "back":   [],
         },
     },
@@ -213,13 +215,13 @@ MODULES_3D: Dict[str, dict] = {
         "tags":        ["native3d", "filler", "vertical"],
         "scalable_d": True,
         "segments": [
-            [(0.5, 0.0, 1.0), (0.5, 1.0, 1.0)],
-            [(0.5, 0.0, 2.0), (0.5, 1.0, 2.0)],
+            [(0.5, 0.0, 0.5), (0.5, 1.0, 0.5)],
+            [(0.5, 0.0, 2.5), (0.5, 1.0, 2.5)],
         ],
         "ports": {
             "left":   [], "right":  [],
-            "bottom": [(0.5, 0.0, 1.0), (0.5, 0.0, 2.0)],
-            "top":    [(0.5, 1.0, 1.0), (0.5, 1.0, 2.0)],
+            "bottom": [(0.5, 0.0, 0.5), (0.5, 0.0, 2.5)],
+            "top":    [(0.5, 1.0, 0.5), (0.5, 1.0, 2.5)],
             "front":  [], "back":   [],
         },
     },
@@ -234,12 +236,12 @@ MODULES_3D: Dict[str, dict] = {
         "tags":        ["native3d", "filler", "horizontal"],
         "scalable_d": True,
         "segments": [
-            [(0.0, 0.5, 1.0), (1.0, 0.5, 1.0)],
-            [(0.0, 0.5, 2.0), (1.0, 0.5, 2.0)],
+            [(0.0, 0.5, 0.5), (1.0, 0.5, 0.5)],
+            [(0.0, 0.5, 2.5), (1.0, 0.5, 2.5)],
         ],
         "ports": {
-            "left":   [(0.0, 0.5, 1.0), (0.0, 0.5, 2.0)],
-            "right":  [(1.0, 0.5, 1.0), (1.0, 0.5, 2.0)],
+            "left":   [(0.0, 0.5, 0.5), (0.0, 0.5, 2.5)],
+            "right":  [(1.0, 0.5, 0.5), (1.0, 0.5, 2.5)],
             "bottom": [], "top":    [],
             "front":  [], "back":   [],
         },
@@ -447,6 +449,50 @@ MODULES_3D: Dict[str, dict] = {
             [(0.5, 2.5), (1.5, 2.5)],
             [(0.5, 2.5), (0.5, 0.5), (0.0, 0.5)],
             [(1.5, 2.5), (1.5, 0.5), (2.0, 0.5)],
+        ], ex={(0.0, 0.5), (2.0, 0.5)}),
+        "ports": _ports_lift({"top": [], "bottom": [], "left": [(0.0, 0.5)], "right": [(2.0, 0.5)]}),
+    },
+
+    # ── Wide-top table variants (spacious dining, W=8) ────────────────────────
+    # Top bar spans x=0→2, connecting into gap filler cells on each side.
+
+    "table_h2_v5": {
+        "id": "table_h2_v5", "w": 2, "h": 2, "d": 3, "zone": "table",
+        "description": "Table h=2, full-width top bar, inward-diagonal legs splaying to side ports. Spacious mode.",
+        "tags": ["lifted", "table", "h2", "wide-top"], "scalable_d": True,
+        # (0.0,1.5) and (2.0,1.5) kept outside ex → z-connectors at bar corners link front and back.
+        "segments": _lift2d([
+            [(0.0, 1.5), (2.0, 1.5)],
+            [(0.0, 1.5), (0.5, 0.5), (0.0, 0.5)],
+            [(2.0, 1.5), (1.5, 0.5), (2.0, 0.5)],
+        ], ex={(0.0, 0.5), (2.0, 0.5)}),
+        "ports": _ports_lift({"top": [], "bottom": [], "left": [(0.0, 0.5)], "right": [(2.0, 0.5)]}),
+    },
+
+    "table_h2_v6": {
+        "id": "table_h2_v6", "w": 2, "h": 2, "d": 3, "zone": "table",
+        "description": "Table h=2, full-width top bar, A-frame legs meeting at a central base. Spacious mode.",
+        "tags": ["lifted", "table", "h2", "wide-top"], "scalable_d": True,
+        # Bar corners and central base all outside ex → z-connectors connect front and back at those points.
+        "segments": _lift2d([
+            [(0.0, 1.5), (2.0, 1.5)],
+            [(0.0, 1.5), (1.0, 0.5)],
+            [(2.0, 1.5), (1.0, 0.5)],
+            [(1.0, 0.5), (0.0, 0.5)],
+            [(1.0, 0.5), (2.0, 0.5)],
+        ], ex={(0.0, 0.5), (2.0, 0.5)}),
+        "ports": _ports_lift({"top": [], "bottom": [], "left": [(0.0, 0.5)], "right": [(2.0, 0.5)]}),
+    },
+
+    "table_h3_v2": {
+        "id": "table_h3_v2", "w": 2, "h": 3, "d": 3, "zone": "table",
+        "description": "Table h=3, full-width top bar, diagonal legs splaying to side ports. Spacious mode.",
+        "tags": ["lifted", "table", "h3", "wide-top"], "scalable_d": True,
+        # (0.0,2.5) and (2.0,2.5) outside ex → z-connectors at bar corners.
+        "segments": _lift2d([
+            [(0.0, 2.5), (2.0, 2.5)],
+            [(0.0, 2.5), (0.5, 0.5), (0.0, 0.5)],
+            [(2.0, 2.5), (1.5, 0.5), (2.0, 0.5)],
         ], ex={(0.0, 0.5), (2.0, 0.5)}),
         "ports": _ports_lift({"top": [], "bottom": [], "left": [(0.0, 0.5)], "right": [(2.0, 0.5)]}),
     },
@@ -846,6 +892,8 @@ ZONES_3D = [
             "table_3d_v1",
             "table_h2_v1", "table_h2_v3",
             "table_h3_v1", "table_h3_v3",
+            "table_h2_v5", "table_h2_v6",
+            "table_h3_v2",
         ],
     },
     {
@@ -873,6 +921,12 @@ ZONES_3D = [
         ],
     },
 ]
+
+# ── Table module groups (mirrors 2D _TABLE_COMPACT / _TABLE_SPACIOUS) ─────────
+# Compact (no wide-top): chairs flush against table, dining zone W=6.
+# Spacious (wide-top):   1-col filler gap each side, dining zone W=8.
+_TABLE_COMPACT_3D  = [m for m in ZONES_3D[1]["modules"] if "wide-top" not in MODULES_3D[m].get("tags", [])]
+_TABLE_SPACIOUS_3D = [m for m in ZONES_3D[1]["modules"] if "wide-top"     in MODULES_3D[m].get("tags", [])]
 
 # ── Corridor-variant modules ──────────────────────────────────────────────────
 # chair_right_corr_r: adds a right stub at seat height so the module ports-match

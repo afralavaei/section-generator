@@ -5,7 +5,8 @@ import streamlit as st
 from solver import solve, check_adjacency, check_circuit
 from drawing import plot_section, plot_module_library, plot_grid_only, _SECTION_ZONES
 from solver3d import solve3d, check_adjacency_3d, check_circuit_3d
-from viewer3d import plot_section_3d, plot_module_library_3d, plot_slice_2d
+from viewer3d import plot_section_3d, plot_module_library_3d, plot_slice_2d, _draw_module_3d
+from modules3d import MODULES_3D
 from llm import chat_modify_dining, onboarding_to_spec
 from sites import SITES, REGIONS, get_site, sites_by_region
 
@@ -32,6 +33,56 @@ def _module_library_3d_png(mtime: float) -> bytes:
     fig.savefig(buf, format="png", dpi=80, bbox_inches="tight")
     plt.close(fig)
     return buf.getvalue()
+
+
+@st.cache_data
+def _furniture_thumbnail_png(module_id: str, mtime: float) -> bytes:
+    import matplotlib.pyplot as plt
+    mod = MODULES_3D[module_id]
+    w, h, d = mod["w"], mod["h"], 3
+    fig = plt.figure(figsize=(1.2, 1.2))
+    ax = fig.add_subplot(111, projection="3d")
+    _draw_module_3d(ax, mod, 0.0, 0.0, 0.0, w, h, d,
+                    show_voxel=True, show_ports=False, zone_alpha=0.05)
+    ax.set_xlim(0, w); ax.set_ylim(0, d); ax.set_zlim(0, h)
+    ax.set_box_aspect((w, d, h))
+    ax.view_init(elev=20, azim=-55)
+    ax.set_axis_off()
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=72, bbox_inches="tight")
+    plt.close(fig)
+    return buf.getvalue()
+
+
+def _chair_options(h_val: int, d_val: int) -> list[tuple[str, str]]:
+    """Return (left_mid, right_mid) pairs for all chair variants at given h and d."""
+    pairs = []
+    for mid, m in MODULES_3D.items():
+        if (m.get("zone") == "chair_left"
+                and m.get("h") == h_val
+                and "_corr_" not in mid
+                and not mid.startswith("_frs")):
+            d_ok = m.get("scalable_d") or "whd_segments_fn" in m or m.get("d", 3) == d_val
+            if not d_ok:
+                continue
+            right_mid = mid.replace("chair_left_", "chair_right_")
+            if right_mid in MODULES_3D:
+                pairs.append((mid, right_mid))
+    return sorted(pairs)
+
+
+def _table_options(h_val: int, wide_top: bool, d_val: int) -> list[str]:
+    """Return table module IDs matching the given h, wide-top class, and d."""
+    results = []
+    for mid, m in MODULES_3D.items():
+        if (m.get("zone") == "table"
+                and m.get("h") == h_val
+                and ("wide-top" in m.get("tags", [])) == wide_top
+                and not mid.startswith("_frs")):
+            d_ok = m.get("scalable_d") or "whd_segments_fn" in m or m.get("d", 3) == d_val
+            if d_ok:
+                results.append(mid)
+    return sorted(results)
 
 
 st.set_page_config(page_title="Nomadic Engine", layout="wide")
@@ -64,6 +115,10 @@ if "needs_llm_call" not in st.session_state:
     st.session_state.needs_llm_call = False
 if "pending_user_msg" not in st.session_state:
     st.session_state.pending_user_msg = None
+if "_mode" not in st.session_state:
+    st.session_state._mode = "2D"
+if "module_overrides" not in st.session_state:
+    st.session_state.module_overrides = {}
 
 
 _CHAIR_HEIGHT_TAGS = {"low_chairs", "tall_chairs", "low_furniture", "tall_furniture"}
@@ -82,10 +137,13 @@ def _stabilize_furniture_tags(result: list, current_tags: list) -> list:
     for p in result:
         mid = p["module_id"]
         if not has_chair and ("chair_left" in mid or "chair_right" in mid):
-            if "_h2_" in mid or mid.endswith("_h2"):
+            # Use placed h value directly — covers native 3D IDs (chair_left_3d_v1 etc.)
+            # as well as pattern-named lifted modules (_h2_, _h3_).
+            h = p.get("h", 0)
+            if h == 2:
                 new_tags.append("low_chairs")
                 has_chair = True
-            elif "_h3_" in mid or mid.endswith("_h3"):
+            elif h == 3:
                 new_tags.append("tall_chairs")
                 has_chair = True
         if not has_table and ("table_h2" in mid or "_table_h2" in mid):
@@ -279,25 +337,6 @@ section_type = st.radio(
     label_visibility="collapsed",
 )
 
-# ── Pending LLM call handler (runs before rendering so result shows on same rerun) ──
-if st.session_state.needs_llm_call and st.session_state.pending_user_msg:
-    _pending = st.session_state.pending_user_msg
-    _old     = dict(st.session_state.dining_spec)
-    _new     = chat_modify_dining(st.session_state.dining_spec, _pending)
-    if _new:
-        st.session_state.dining_spec.update(_new)
-        _reply = _change_summary(_old, st.session_state.dining_spec)
-    else:
-        _reply = "⚠️ Couldn't reach the LLM — is the wrapper running at http://127.0.0.1:8000?"
-    _hist = st.session_state.chat_history
-    if _hist and _hist[-1]["content"] == "Generating…":
-        _hist[-1] = {"role": "assistant", "content": _reply}
-    else:
-        _hist.append({"role": "assistant", "content": _reply})
-    st.session_state.needs_llm_call = False
-    st.session_state.pending_user_msg = None
-    st.rerun()
-
 st.divider()
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -305,10 +344,11 @@ with st.sidebar:
     mode = st.radio(
         "Mode",
         options=["2D", "3D"],
+        index=["2D", "3D"].index(st.session_state._mode),
         horizontal=True,
-        key="mode",
         help="2D = section drawing.  3D = volumetric assembly with a depth axis.",
     )
+    st.session_state._mode = mode
     st.divider()
     st.header("Parameters")
 
@@ -467,7 +507,8 @@ with st.sidebar:
             D = 1
 
 # ── Main area: chat column (left) + section column (right) ────────────────────
-chat_col, section_col = st.columns([1, 2], gap="medium")
+_picker_result = None  # set by section_col, consumed by picker_col
+chat_col, section_col, picker_col = st.columns([1, 2.5, 0.7], gap="medium")
 
 # ── Chat column ───────────────────────────────────────────────────────────────
 with chat_col:
@@ -495,6 +536,26 @@ with chat_col:
             st.rerun()
         else:
             st.info("Chat is available for the Dining section only.")
+
+    if st.session_state.needs_llm_call and st.session_state.pending_user_msg:
+        with st.spinner("Generating…"):
+            _pending = st.session_state.pending_user_msg
+            _old     = dict(st.session_state.dining_spec)
+            _new     = chat_modify_dining(st.session_state.dining_spec, _pending)
+        if _new:
+            st.session_state.dining_spec.update(_new)
+            st.session_state.module_overrides = {}
+            _reply = _change_summary(_old, st.session_state.dining_spec)
+        else:
+            _reply = "⚠️ Couldn't reach the LLM — is the wrapper running at http://127.0.0.1:8000?"
+        _hist = st.session_state.chat_history
+        if _hist and _hist[-1]["content"] == "Generating…":
+            _hist[-1] = {"role": "assistant", "content": _reply}
+        else:
+            _hist.append({"role": "assistant", "content": _reply})
+        st.session_state.needs_llm_call  = False
+        st.session_state.pending_user_msg = None
+        st.rerun()
 
 # ── Section column ─────────────────────────────────────────────────────────────
 with section_col:
@@ -541,7 +602,8 @@ with section_col:
                                        preferred_tags=_preferred)
                     else:
                         result = solve3d(W, H, D, seed, corridor, corridor_w, dining_style, roof_style,
-                                         preferred_tags=_preferred)
+                                         preferred_tags=_preferred,
+                                         zone_overrides=st.session_state.module_overrides or None)
 
                 if result is None:
                     st.error("No valid section found — try a different seed or combination.")
@@ -560,6 +622,7 @@ with section_col:
                                                show_figures=show_figures, roof_style=roof_style))
                     else:
                         st.pyplot(plot_section_3d(result, W, H, D))
+                        _picker_result = result  # pass to picker_col
                         with st.expander("2D slice at depth z", expanded=False):
                             z_slice = st.slider(
                                 "z position (slice through depth)",
@@ -650,3 +713,60 @@ with section_col:
         else:
             st.pyplot(plot_grid_only(W, H, section_type, corridor, corridor_w))
 
+# ── Picker column (right) ─────────────────────────────────────────────────────
+with picker_col:
+    if _picker_result and mode == "3D":
+        _mtime3d = os.path.getmtime(_MODULES3D_PATH)
+
+        # ── Chair style ───────────────────────────────────────────────────────
+        placed_cl = next(
+            (p for p in _picker_result
+             if MODULES_3D.get(p["module_id"], {}).get("zone") == "chair_left"),
+            None)
+        if placed_cl:
+            h_val = placed_cl["h"]
+            ch_opts = _chair_options(h_val, D)
+            if len(ch_opts) > 1:
+                st.markdown("**Chair style**")
+                current_left = st.session_state.module_overrides.get(
+                    "chair_left", placed_cl["module_id"])
+                for left_mid, right_mid in ch_opts:
+                    label = (left_mid
+                             .replace("chair_left_", "")
+                             .replace(f"h{h_val}_", ""))
+                    is_active = left_mid == current_left
+                    st.image(_furniture_thumbnail_png(left_mid, _mtime3d),
+                             use_container_width=True)
+                    if st.button(label, key=f"pick_chair_{left_mid}",
+                                 type="primary" if is_active else "secondary",
+                                 use_container_width=True):
+                        st.session_state.module_overrides["chair_left"]  = left_mid
+                        st.session_state.module_overrides["chair_right"] = right_mid
+                        st.rerun()
+
+        st.divider()
+
+        # ── Table style ───────────────────────────────────────────────────────
+        placed_t = next(
+            (p for p in _picker_result
+             if MODULES_3D.get(p["module_id"], {}).get("zone") == "table"),
+            None)
+        if placed_t:
+            t_mid  = placed_t["module_id"]
+            t_h    = placed_t["h"]
+            t_wide = "wide-top" in MODULES_3D.get(t_mid, {}).get("tags", [])
+            t_opts = _table_options(t_h, t_wide, D)
+            if len(t_opts) > 1:
+                st.markdown("**Table style**")
+                current_t = st.session_state.module_overrides.get("table", t_mid)
+                for tmid in t_opts:
+                    label = (tmid
+                             .replace("table_", "")
+                             .replace(f"h{t_h}_", ""))
+                    st.image(_furniture_thumbnail_png(tmid, _mtime3d),
+                             use_container_width=True)
+                    if st.button(label, key=f"pick_table_{tmid}",
+                                 type="primary" if tmid == current_t else "secondary",
+                                 use_container_width=True):
+                        st.session_state.module_overrides["table"] = tmid
+                        st.rerun()
