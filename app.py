@@ -7,6 +7,7 @@ from drawing import plot_section, plot_module_library, plot_grid_only, _SECTION_
 from solver3d import solve3d, check_adjacency_3d, check_circuit_3d
 from viewer3d import plot_section_3d, plot_module_library_3d, plot_slice_2d, _draw_module_3d
 from modules3d import MODULES_3D
+import llm
 from llm import chat_modify_dining, onboarding_to_spec
 from sites import SITES, REGIONS, get_site, sites_by_region
 
@@ -89,7 +90,7 @@ st.set_page_config(page_title="Nomadic Engine", layout="wide")
 
 # ── Session state ─────────────────────────────────────────────────────────────
 if "onboarding_complete" not in st.session_state:
-    st.session_state.onboarding_complete = False
+    st.session_state.onboarding_complete = True  # DEV: skip onboarding
 if "onboarding_step" not in st.session_state:
     st.session_state.onboarding_step = 0
 if "onboarding_answers" not in st.session_state:
@@ -169,6 +170,46 @@ def _spec_summary(spec: dict) -> str:
     return " · ".join(parts)
 
 
+def _initial_greeting(site: dict, answers: dict, spec: dict) -> str:
+    _occ = {"solo": "just you", "couple": "two people",
+            "family": "your family", "large_group": "a large group"}
+    _pur = {"remote_work": "remote work", "retreat": "relaxation",
+            "socialising": "hosting guests", "field_research": "field research"}
+    occ_str = _occ.get(answers.get("occupants", ""), answers.get("occupants", ""))
+    pur_str  = _pur.get(answers.get("purpose",   ""), answers.get("purpose",   ""))
+    return (
+        f"Hi! I'm your Nomadic Engine assistant. Based on your answers, I've designed "
+        f"a dining space for **{occ_str}** at **{site['name']}**, "
+        f"suited for **{pur_str}**.\n\n"
+        f"{_spec_summary(spec)}\n\n"
+        "Is there anything you'd like to adjust?"
+    )
+
+
+def _dining_suggestions(spec: dict, answers: dict) -> list[str]:
+    sugg = []
+    if spec.get("dining_style") == "compact":
+        sugg.append("Make it more spacious and open")
+    else:
+        sugg.append("Make it more compact and efficient")
+    if spec.get("h", 7) <= 8:
+        sugg.append("Raise the ceiling — make it feel more dramatic")
+    else:
+        sugg.append("Lower the ceiling for a cosier feel")
+    if "more_shelves" not in spec.get("preferred_tags", []):
+        sugg.append("Add storage shelves above the table")
+    else:
+        sugg.append("Remove the overhead shelves")
+    occ = answers.get("occupants", "couple")
+    if occ in ("family", "large_group"):
+        sugg.append("Make it better for hosting large gatherings")
+    elif occ == "solo":
+        sugg.append("Give the single-person setup more presence")
+    else:
+        sugg.append("Make it feel more intimate for two")
+    return sugg
+
+
 def _change_summary(old: dict, new: dict) -> str:
     labels = {
         "dining_style": "style", "num_chairs": "seating",
@@ -184,6 +225,57 @@ def _change_summary(old: dict, new: dict) -> str:
                 val = ", ".join(val) if val else "none"
             changes.append(f"{label} → **{val}**")
     return "Updated: " + " · ".join(changes) if changes else "No changes."
+
+# ── LLM settings (hoisted before st.stop so visible during onboarding) ────────
+with st.sidebar:
+    st.markdown("**LLM**")
+    _MODELS = {
+        "gemini-2.0-flash":  "Gemini 2.0 Flash  (Google, 1500/day free)",
+        "gemini-2.5-flash":  "Gemini 2.5 Flash  (Google, 500/day free)",
+        "gemini-2.5-pro":    "Gemini 2.5 Pro    (Google, 25/day free)",
+        "gemini-1.5-flash":  "Gemini 1.5 Flash  (Google, legacy)",
+        "gemma-3-27b-it":    "Gemma 3 27B       (Google, 14400/day free)",
+        "gemma-3-12b-it":    "Gemma 3 12B       (Google, 14400/day free)",
+        "gemma-4-31b-it":    "Gemma 4 31B       (Google, 14400/day free)",
+        "gpt-4o":            "GPT-4o            (OpenAI, paid)",
+        "gpt-4o-mini":       "GPT-4o mini       (OpenAI, paid, cheap)",
+        "gpt-4-turbo":       "GPT-4 Turbo       (OpenAI, paid)",
+        "claude-opus-4-8":   "Claude Opus 4     (Anthropic, paid)",
+        "claude-sonnet-4-6": "Claude Sonnet 4   (Anthropic, paid)",
+        "claude-haiku-4-5-20251001": "Claude Haiku 4    (Anthropic, paid, fast)",
+    }
+    _model_choice = st.selectbox(
+        "Model",
+        options=list(_MODELS.keys()),
+        format_func=lambda m: _MODELS[m],
+        index=list(_MODELS.keys()).index(
+            st.session_state.get("llm_model", llm.MODEL)
+        ) if st.session_state.get("llm_model", llm.MODEL) in _MODELS else 0,
+    )
+    if _model_choice != st.session_state.get("llm_model"):
+        st.session_state.llm_model = _model_choice
+        llm.MODEL = _model_choice
+
+    # Show key input only for the active provider if not yet set
+    _provider = llm.provider_for(llm.MODEL)
+    _key_labels = {
+        "google":    ("Gemini API key",    "AIza…",       "aistudio.google.com"),
+        "openai":    ("OpenAI API key",    "sk-…",        "platform.openai.com"),
+        "anthropic": ("Anthropic API key", "sk-ant-…",    "console.anthropic.com"),
+    }
+    if not llm.is_configured(_provider):
+        _label, _placeholder, _url = _key_labels[_provider]
+        _key_input = st.text_input(
+            _label, type="password", placeholder=_placeholder,
+            help=f"Get your key at {_url}",
+        )
+        if _key_input:
+            llm.configure(_provider, _key_input, save=True)
+            st.success("API key saved.")
+            st.rerun()
+        else:
+            st.warning(f"Enter your {_label} to enable chat.")
+    st.divider()
 
 # ── Onboarding ────────────────────────────────────────────────────────────────
 if not st.session_state.onboarding_complete:
@@ -288,7 +380,7 @@ if not st.session_state.onboarding_complete:
             st.write("")
             if st.button("See my proposal →", key="ob_finish", type="primary"):
                 with st.spinner("Generating your dwelling proposal…"):
-                    spec = onboarding_to_spec(
+                    spec, _ob_err = onboarding_to_spec(
                         st.session_state.onboarding_site,
                         st.session_state.onboarding_answers,
                     )
@@ -308,18 +400,11 @@ if not st.session_state.onboarding_complete:
                     site    = st.session_state.onboarding_site
                     st.session_state.chat_history = [{
                         "role": "assistant",
-                        "content": (
-                            f"Proposal generated for **{site['name']}** "
-                            f"({answers['occupants'].replace('_', ' ')} · "
-                            f"{answers['duration'].replace('_', ' ')} · "
-                            f"{answers['purpose'].replace('_', ' ')} · "
-                            f"{answers['scale']}).\n\n"
-                            f"Dining: {_spec_summary(st.session_state.dining_spec)}"
-                        ),
+                        "content": _initial_greeting(site, answers, st.session_state.dining_spec),
                     }]
                     st.session_state.onboarding_complete = True
                 else:
-                    st.error("Couldn't reach the LLM — is the wrapper running at http://127.0.0.1:8000?")
+                    st.error(f"Gemini error: {_ob_err}" if _ob_err else "Couldn't reach Gemini — check your API key in the sidebar.")
 
         if st.button("← Back", key=f"ob_back_{step}"):
             st.session_state.onboarding_step = step - 1
@@ -508,46 +593,54 @@ with st.sidebar:
 
 # ── Main area: chat column (left) + section column (right) ────────────────────
 _picker_result = None  # set by section_col, consumed by picker_col
-chat_col, section_col, picker_col = st.columns([1, 2.5, 0.7], gap="medium")
+chat_col, section_col, picker_col = st.columns([1.4, 2.1, 0.7], gap="medium")
 
 # ── Chat column ───────────────────────────────────────────────────────────────
 with chat_col:
     st.markdown("**Chat**")
-    with st.container(height=480, border=True):
+    with st.container(height=520, border=True):
         if not st.session_state.chat_history:
             st.caption("No messages yet — describe your dining space below.")
         for msg in st.session_state.chat_history:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
-    with st.form("chat_form", clear_on_submit=True):
-        _user_input = st.text_input(
-            "msg", placeholder="Describe your dining space…",
-            label_visibility="collapsed",
+    # Suggestion chips — only shown before the first user message
+    _history = st.session_state.chat_history
+    if (len(_history) == 1 and _history[0]["role"] == "assistant"
+            and section_type == "Dining"):
+        _suggs = _dining_suggestions(
+            st.session_state.dining_spec,
+            st.session_state.get("onboarding_answers", {}),
         )
-        _send = st.form_submit_button("Send →", use_container_width=True)
+        for _s in _suggs:
+            if st.button(_s, key=f"sugg_{_s[:30]}", use_container_width=True):
+                st.session_state.chat_history.append({"role": "user",      "content": _s})
+                st.session_state.chat_history.append({"role": "assistant", "content": "Generating…"})
+                st.session_state.needs_llm_call  = True
+                st.session_state.pending_user_msg = _s
+                st.rerun()
 
-    if _send and _user_input.strip():
-        if section_type == "Dining":
-            st.session_state.chat_history.append({"role": "user",      "content": _user_input})
-            st.session_state.chat_history.append({"role": "assistant", "content": "Generating…"})
-            st.session_state.needs_llm_call  = True
-            st.session_state.pending_user_msg = _user_input
-            st.rerun()
-        else:
-            st.info("Chat is available for the Dining section only.")
+    _disabled = section_type != "Dining"
+    _placeholder = "Describe your dining space…" if not _disabled else "Chat available for Dining only"
+    _user_input = st.chat_input(_placeholder, disabled=_disabled, key="chat_input")
+
+    if _user_input and _user_input.strip():
+        st.session_state.chat_history.append({"role": "user",      "content": _user_input})
+        st.session_state.chat_history.append({"role": "assistant", "content": "Generating…"})
+        st.session_state.needs_llm_call  = True
+        st.session_state.pending_user_msg = _user_input
+        st.rerun()
 
     if st.session_state.needs_llm_call and st.session_state.pending_user_msg:
         with st.spinner("Generating…"):
             _pending = st.session_state.pending_user_msg
-            _old     = dict(st.session_state.dining_spec)
-            _new     = chat_modify_dining(st.session_state.dining_spec, _pending)
-        if _new:
+            # Pass history excluding the pending user msg and "Generating…" placeholder
+            _hist = st.session_state.chat_history[:-2]
+            _new, _reply = chat_modify_dining(st.session_state.dining_spec, _pending, history=_hist)
+        if _new is not None:
             st.session_state.dining_spec.update(_new)
             st.session_state.module_overrides = {}
-            _reply = _change_summary(_old, st.session_state.dining_spec)
-        else:
-            _reply = "⚠️ Couldn't reach the LLM — is the wrapper running at http://127.0.0.1:8000?"
         _hist = st.session_state.chat_history
         if _hist and _hist[-1]["content"] == "Generating…":
             _hist[-1] = {"role": "assistant", "content": _reply}

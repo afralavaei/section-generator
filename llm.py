@@ -1,35 +1,96 @@
 """
-LLM wrapper integration — POST to Gemini API wrapper at http://127.0.0.1:8000.
-Phase 1: dining chat modification.
-Phase 2: onboarding → initial dwelling spec.
+Multi-provider LLM integration — Google (Gemini/Gemma), OpenAI (GPT), Anthropic (Claude).
+No wrapper server required.
 """
 import json
+import os
 import time
-import requests
-from typing import Optional
+from pathlib import Path
+MODEL    = "gemma-4-31b-it"
+_RAG_DIR = Path(__file__).parent / "rag"
 
-WRAPPER_URL          = "http://127.0.0.1:8000"
-RAG_COLLECTION       = "dining_vocabulary_RAG"
-ONBOARDING_RAG       = "onboarding_RAG"
-MODEL                = "gemma-4-31b-it" 
+# ── Provider detection ─────────────────────────────────────────────────────────
+
+def provider_for(model: str) -> str:
+    """Return 'google', 'openai', or 'anthropic' based on model name."""
+    if model.startswith(("gpt-", "o1-", "o3-", "o4-")):
+        return "openai"
+    if model.startswith("claude-"):
+        return "anthropic"
+    return "google"
+
+# ── API keys ───────────────────────────────────────────────────────────────────
+
+_BASE = Path(__file__).parent
+_KEY_FILES = {
+    "google":    _BASE / ".gemini_key",
+    "openai":    _BASE / ".openai_key",
+    "anthropic": _BASE / ".anthropic_key",
+}
+_ENV_VARS = {
+    "google":    "GEMINI_API_KEY",
+    "openai":    "OPENAI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+}
+_keys: dict[str, str] = {}
+
+
+def configure(provider: str, api_key: str, save: bool = False) -> None:
+    _keys[provider] = api_key.strip()
+    if save:
+        _KEY_FILES[provider].write_text(api_key.strip(), encoding="utf-8")
+
+
+def is_configured(provider: str | None = None) -> bool:
+    p = provider or provider_for(MODEL)
+    return bool(_key_for(p, raise_if_missing=False))
+
+
+def _key_for(provider: str, raise_if_missing: bool = True) -> str:
+    if provider in _keys and _keys[provider]:
+        return _keys[provider]
+    key = os.environ.get(_ENV_VARS[provider], "")
+    if not key and _KEY_FILES[provider].exists():
+        key = _KEY_FILES[provider].read_text(encoding="utf-8").strip()
+    if key:
+        _keys[provider] = key
+        return key
+    if raise_if_missing:
+        raise RuntimeError(f"No API key for {provider} — add it in the sidebar.")
+    return ""
+
+
+# ── RAG ────────────────────────────────────────────────────────────────────────
+
+def _load_rag(filename: str) -> str:
+    p = _RAG_DIR / filename
+    return p.read_text(encoding="utf-8") if p.exists() else ""
+
+
+# ── Schema ─────────────────────────────────────────────────────────────────────
 
 DINING_SCHEMA = {
     "type": "object",
     "properties": {
+        "action":         {"type": "string",  "enum": ["update", "clarify"]},
         "dining_style":   {"type": "string",  "enum": ["compact", "spacious"]},
         "num_chairs":     {"type": "integer", "minimum": 1, "maximum": 2},
         "h":              {"type": "integer", "minimum": 7, "maximum": 11},
         "d":              {"type": "integer", "minimum": 2, "maximum": 9},
         "roof_style":     {"type": "string",  "enum": ["any", "plain", "divided", "pitched"]},
         "preferred_tags": {"type": "array",   "items": {"type": "string"}},
+        "reply":          {"type": "string"},
     },
-    "required": ["dining_style", "num_chairs", "h", "d", "roof_style", "preferred_tags"],
+    "required": ["action", "dining_style", "num_chairs", "h", "d", "roof_style", "preferred_tags", "reply"],
 }
 
-_CONTEXT = (
+# ── System prompts ─────────────────────────────────────────────────────────────
+
+_DINING_SYSTEM = (
     "You are the configurator for Nomadic Engine, a deployable off-grid dwelling system. "
-    "Translate the user's natural language into dining section parameters. "
-    "Always output all eight required fields.\n\n"
+    "You are having an ongoing design conversation with a prospective dweller. "
+    "You have access to the full conversation history — use it to understand their intent, "
+    "refer back to earlier preferences, and build on what has already been decided.\n\n"
 
     "THREE INDEPENDENT PARAMETERS — only change what the user asks about:\n"
     "  dining_style   = WIDTH OF THE TABLE/SECTION ('compact'=narrow, 'spacious'=wide).\n"
@@ -58,9 +119,33 @@ _CONTEXT = (
     "  'higher ceiling'  → h increases by 2,                 preferred_tags UNCHANGED\n\n"
 
     "RULE: Only change num_chairs if the user explicitly mentions seating sides, dining alone, or face-to-face.\n\n"
-    f"Output must be valid JSON matching this schema: {json.dumps(DINING_SCHEMA)}"
+
+    "ACTION field rules:\n"
+    "  Set action='update' when the intent is clear enough to act — make the change.\n"
+    "  Set action='clarify' when the request is genuinely ambiguous between two different parameters "
+    "(e.g. 'make it bigger' could mean ceiling height or table width). "
+    "Ask ONE short question in the reply field. Do not change any parameters when clarifying. "
+    "Default to 'update' — only clarify when truly necessary.\n\n"
+
+    "REPLY field: Write 1–2 sentences in the voice of a calm, direct architect. "
+    "You may reference earlier turns ('as you mentioned before…', 'building on your preference for…'). "
+    "Do not mention parameter field names. "
+    "If action='clarify', the reply IS the question.\n\n"
+
+    f"Output must be valid JSON matching this schema: {json.dumps(DINING_SCHEMA)}\n\n"
+    "--- VOCABULARY REFERENCE ---\n"
 )
 
+_ONBOARDING_SYSTEM = (
+    "You are the configurator for Nomadic Engine, a deployable off-grid dwelling system. "
+    "Translate 5 onboarding answers + site climate data into dining section parameters. "
+    "Always output all required fields: dining_style, num_chairs, h, d, roof_style, preferred_tags.\n"
+    "The reply field should be left as an empty string for onboarding.\n\n"
+    f"Output must be valid JSON matching this schema: {json.dumps(DINING_SCHEMA)}\n\n"
+    "--- ONBOARDING VOCABULARY REFERENCE ---\n"
+)
+
+# ── Corridor / roof / furniture post-processing (unchanged logic) ──────────────
 
 _CORRIDOR_KW: dict = {
     "right":   ["add a corridor", "add corridor", "i want a corridor", "add walkway", "add a walkway"],
@@ -71,15 +156,12 @@ _CORRIDOR_KW: dict = {
                 "more circulation", "wider walkway"],
     "narrow":  ["narrow corridor", "compact corridor", "tight corridor", "smaller corridor"],
 }
-# Words that signal the user also explicitly wants a section-width change alongside the corridor
 _SECTION_WIDTH_KW = ["spacious", "compact", "wider section", "open layout", "tighter section",
                      "narrower section", "make it spacious", "make it compact"]
 
 
 def _apply_corridor_changes(msg: str, current: dict, params: dict) -> dict:
-    """Detect corridor keywords and apply changes using current spec as base.
-    Locks dining_style and preferred_tags to current when ONLY a corridor change was requested,
-    preventing the LLM from spuriously widening the section or changing furniture."""
+    """Detect corridor keywords and apply changes using current spec as base."""
     msg_l = msg.lower()
     side = current.get("corridor_side", "none")
     cw   = current.get("corridor_w",   2)
@@ -98,8 +180,6 @@ def _apply_corridor_changes(msg: str, current: dict, params: dict) -> dict:
         cw, changed = 2, True
 
     if changed:
-        # Start from current spec — only the corridor fields change.
-        # Selectively allow dining_style to change if the user also asked for it.
         result = dict(current)
         result["corridor_side"] = side
         result["corridor_w"]    = cw
@@ -126,8 +206,6 @@ _ROOF_KW: dict = {
 
 
 def _apply_roof_changes(msg: str, current: dict, params: dict) -> dict:
-    """Detect roof/shelf keywords and force correct roof_style and shelf tags.
-    Runs after _apply_furniture_height so preferred_tags already has correct furniture tags."""
     msg_l = msg.lower()
     roof  = params.get("roof_style", current.get("roof_style", "any"))
     tags  = [t for t in params.get("preferred_tags", []) if t not in _SHELF_TAGS]
@@ -169,8 +247,6 @@ _KW: dict = {
     "tall_furniture": ["tall furniture", "higher furniture", "taller furniture"],
     "low_furniture":  ["low furniture", "lower furniture"],
 }
-
-# Maps compound tag → (chair component, table component)
 _COMPOUND_EXPAND = {
     "tall_furniture": ("tall_chairs", "tall_table"),
     "low_furniture":  ("low_chairs",  "low_table"),
@@ -178,12 +254,8 @@ _COMPOUND_EXPAND = {
 
 
 def _apply_furniture_height(msg: str, current: dict, params: dict) -> dict:
-    """Post-process: detect furniture-height keywords and force correct independent tags.
-    Preserves unchanged furniture tags from current spec so unrelated elements stay stable.
-    Restores h to current value so the LLM cannot accidentally change ceiling height."""
-    msg_l = msg.lower()
-
-    matched: dict[str, str] = {}  # tag_name → category (chairs/table/both)
+    msg_l   = msg.lower()
+    matched: dict[str, str] = {}
     for tag, keywords in _KW.items():
         if any(kw in msg_l for kw in keywords):
             matched[tag] = tag
@@ -194,24 +266,21 @@ def _apply_furniture_height(msg: str, current: dict, params: dict) -> dict:
     changing_chairs = any(t in _CHAIR_HEIGHT_TAGS | _COMPOUND_HEIGHT_TAGS for t in matched)
     changing_table  = any(t in _TABLE_HEIGHT_TAGS  | _COMPOUND_HEIGHT_TAGS for t in matched)
 
-    # Build base from CURRENT spec tags (not LLM output) — stable foundation.
-    # Expand compound tags (tall_furniture) into components when only one side changes.
     base: list[str] = []
     for t in current.get("preferred_tags", []):
         if t in _ALL_HEIGHT_TAGS:
             if t in _COMPOUND_HEIGHT_TAGS:
                 chair_comp, table_comp = _COMPOUND_EXPAND[t]
                 if not changing_chairs:
-                    base.append(chair_comp)   # preserve chair component
+                    base.append(chair_comp)
                 if not changing_table:
-                    base.append(table_comp)   # preserve table component
+                    base.append(table_comp)
             elif t in _CHAIR_HEIGHT_TAGS and not changing_chairs:
-                base.append(t)               # preserve existing chair tag
+                base.append(t)
             elif t in _TABLE_HEIGHT_TAGS and not changing_table:
-                base.append(t)               # preserve existing table tag
-            # else: this category is being replaced — drop it
+                base.append(t)
         else:
-            base.append(t)                   # non-height tags always preserved
+            base.append(t)
 
     return {
         **params,
@@ -220,51 +289,109 @@ def _apply_furniture_height(msg: str, current: dict, params: dict) -> dict:
     }
 
 
-def chat_modify_dining(current_spec: dict, user_message: str) -> Optional[dict]:
-    """Send user_message to the wrapper and return updated dining params, or None on failure."""
-    context = _CONTEXT + f"\n\nCurrent parameters: {json.dumps(current_spec)}"
+# ── Multi-provider call ────────────────────────────────────────────────────────
 
-    payload = {
-        "model":          MODEL,
-        "prompt":         user_message,
-        "context":        context,
-        "use_rag":        True,
-        "rag_collection": RAG_COLLECTION,
-        "rag_top_k":      4,
-        "temperature":    0.3,
-        "metadata":       DINING_SCHEMA,
-    }
+def _generate(system: str, prompt: str,
+              history: list[dict] | None = None,
+              temperature: float = 0.3) -> dict:
+    """Call the active model with optional conversation history. Returns parsed JSON."""
+    provider = provider_for(MODEL)
+    key      = _key_for(provider)
+    history  = history or []
+
+    if provider == "google":
+        from google import genai
+        from google.genai import types as gtypes
+        client   = genai.Client(api_key=key)
+        contents = []
+        for msg in history:
+            role = "model" if msg["role"] == "assistant" else "user"
+            contents.append(gtypes.Content(role=role, parts=[gtypes.Part(text=msg["content"])]))
+        contents.append(gtypes.Content(role="user", parts=[gtypes.Part(text=prompt)]))
+        response = client.models.generate_content(
+            model=MODEL,
+            contents=contents,
+            config=gtypes.GenerateContentConfig(
+                system_instruction=system,
+                response_mime_type="application/json",
+                temperature=temperature,
+            ),
+        )
+        return json.loads(response.text)
+
+    if provider == "openai":
+        from openai import OpenAI
+        client   = OpenAI(api_key=key)
+        messages = [{"role": "system", "content": system}]
+        for msg in history:
+            messages.append({"role": msg["role"], "content": msg["content"]})
+        messages.append({"role": "user", "content": prompt})
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=messages,
+            response_format={"type": "json_object"},
+            temperature=temperature,
+        )
+        return json.loads(response.choices[0].message.content)
+
+    if provider == "anthropic":
+        import anthropic
+        client   = anthropic.Anthropic(api_key=key)
+        messages = []
+        for msg in history:
+            messages.append({"role": msg["role"], "content": msg["content"]})
+        messages.append({"role": "user", "content": prompt})
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=1024,
+            system=system + "\n\nYou must respond with valid JSON only, no other text.",
+            messages=messages,
+            temperature=temperature,
+        )
+        return json.loads(response.content[0].text)
+
+    raise RuntimeError(f"Unknown provider for model: {MODEL}")
+
+
+# ── Public API ─────────────────────────────────────────────────────────────────
+
+_HISTORY_LIMIT = 20  # max messages passed as context (10 exchanges)
+
+
+def chat_modify_dining(
+    current_spec: dict,
+    user_message: str,
+    history: list[dict] | None = None,
+) -> tuple[dict, str] | tuple[None, str]:
+    """Returns (updated_params, reply_text) on update,
+    (None, reply_text) on clarify question or error."""
+    system     = _DINING_SYSTEM + _load_rag("dining_vocabulary_RAG.md")
+    prompt     = f"Current parameters: {json.dumps(current_spec)}\n\nUser: {user_message}"
+    clean_hist = [m for m in (history or []) if m.get("content") not in ("", "Generating…")]
+    hist       = clean_hist[-_HISTORY_LIMIT:]
+    last_error = ""
 
     for attempt in range(3):
         try:
-            resp = requests.post(f"{WRAPPER_URL}/completion", json=payload, timeout=30)
-            resp.raise_for_status()
-            data = resp.json()
-            result = data["json_data"] if data.get("json_data") else json.loads(data["text"])
+            result = _generate(system, prompt, history=hist)
+            action = result.pop("action", "update")
+            reply  = result.pop("reply", "Done.")
+            if action == "clarify":
+                return None, reply
             result = _apply_corridor_changes(user_message, current_spec, result)
             result = _apply_furniture_height(user_message, current_spec, result)
-            return _apply_roof_changes(user_message, current_spec, result)
-        except Exception:
+            result = _apply_roof_changes(user_message, current_spec, result)
+            return result, reply
+        except Exception as e:
+            last_error = str(e)
             if attempt < 2:
                 time.sleep(2)
-    return None
+    return None, f"⚠️ {last_error}"
 
 
-# ── Onboarding ────────────────────────────────────────────────────────────────
-
-
-_ONBOARDING_DINING_CONTEXT = (
-    "You are the configurator for Nomadic Engine, a deployable off-grid dwelling system. "
-    "Your job is to translate 5 onboarding answers + a site's climate data into dining section parameters. "
-    "Use the RAG collection to understand how occupants, duration, purpose, priority, and scale "
-    "map to dining parameters. "
-    "Always output all six required fields: dining_style, num_chairs, h, d, roof_style, preferred_tags. "
-    f"Output must be valid JSON matching this schema: {json.dumps(DINING_SCHEMA)}"
-)
-
-
-def onboarding_to_spec(site: dict, answers: dict) -> Optional[dict]:
-    """Convert site climate + 5 onboarding answers into dining section params."""
+def onboarding_to_spec(site: dict, answers: dict) -> tuple[dict | None, str]:
+    """Returns (params, error_message). params is None on failure."""
+    system = _ONBOARDING_SYSTEM + _load_rag("onboarding_RAG.md")
     prompt = (
         f"Site: {site['name']} ({site['location']}). "
         f"Temperature: {site['temperature']}. Precipitation: {site['precipitation']}. "
@@ -275,29 +402,17 @@ def onboarding_to_spec(site: dict, answers: dict) -> Optional[dict]:
         f"- Purpose: {answers['purpose']}\n"
         f"- Priority: {answers['priority']}\n"
         f"- Scale: {answers['scale']}\n\n"
-        "Based on these answers, generate the dining section parameters for this nomad."
+        "Generate the dining section parameters for this nomad."
     )
-
-    payload = {
-        "model":          MODEL,
-        "prompt":         prompt,
-        "context":        _ONBOARDING_DINING_CONTEXT,
-        "use_rag":        True,
-        "rag_collection": ONBOARDING_RAG,
-        "rag_top_k":      3,
-        "temperature":    0.3,
-        "metadata":       DINING_SCHEMA,
-    }
+    last_error = ""
 
     for attempt in range(3):
         try:
-            resp = requests.post(f"{WRAPPER_URL}/completion", json=payload, timeout=45)
-            resp.raise_for_status()
-            data = resp.json()
-            if data.get("json_data"):
-                return data["json_data"]
-            return json.loads(data["text"])
-        except Exception:
+            result = _generate(system, prompt, temperature=0.2)
+            result.pop("reply", None)
+            return result, ""
+        except Exception as e:
+            last_error = str(e)
             if attempt < 2:
                 time.sleep(2)
-    return None
+    return None, last_error

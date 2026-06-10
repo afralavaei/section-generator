@@ -1269,13 +1269,13 @@ _SHELF_CATEGORY: dict = {
 KITCHEN_ZONES_INNER = [
     {"id": "lower_cabinet", "x_rule": ["first 3"], "y_rule": ["first 3"],          "modules": ["kitchen_lower_w3_h4_v2"]},
     {"id": "upper_cabinet", "x_rule": ["first 2"], "y_rule": ["from 3 to last 0"], "modules": ["kitchen_upper_w2"]},
-    {"id": "kitchen_wall",  "x_rule": ["last 2"],  "y_rule": ["full"],              "modules": ["kitchen_wall"]},
+    {"id": "kitchen_wall",  "x_rule": ["last 2"],  "y_rule": ["full"],              "modules": ["corridor_right_short"]},
 ]
 
 KITCHEN_ZONES_INNER_CORR_RIGHT = [
     KITCHEN_ZONES_INNER[0],
     KITCHEN_ZONES_INNER[1],
-    {**KITCHEN_ZONES_INNER[2], "modules": ["kitchen_wall_corr_r"]},
+    {**KITCHEN_ZONES_INNER[2], "modules": ["corridor_right_short"]},
 ]
 
 KITCHEN_ZONES_INNER_CORR_LEFT = [
@@ -1307,7 +1307,7 @@ KITCHEN_ZONES = [
         "id":      "kitchen_wall",
         "x_rule":  ["last 2"],
         "y_rule":  ["skip last 1"],
-        "modules": ["kitchen_wall"],
+        "modules": ["corridor_right_short"],
     },
 ]
 
@@ -1315,7 +1315,7 @@ KITCHEN_ZONES_CORR_RIGHT = [
     {**KITCHEN_ZONES[0], "modules": ["shelf_h1_v1_corr_r"]},
     KITCHEN_ZONES[1],
     KITCHEN_ZONES[2],
-    {**KITCHEN_ZONES[3], "modules": ["kitchen_wall_corr_r"]},
+    {**KITCHEN_ZONES[3], "modules": ["corridor_right_short"]},
 ]
 
 KITCHEN_ZONES_CORR_LEFT = [
@@ -1331,8 +1331,8 @@ KITCHEN_ZONES_CORR_LEFT = [
 _KZ_LOWER       = KITCHEN_ZONES[1]
 _KZ_UPPER_TO_H2 = {"id": "upper_cabinet", "x_rule": ["first 2"], "y_rule": ["from 3 to last 2"], "modules": ["kitchen_upper_w2"]}
 _KZ_UPPER_TO_H3 = {"id": "upper_cabinet", "x_rule": ["first 2"], "y_rule": ["from 3 to last 3"], "modules": ["kitchen_upper_w2"]}
-_KZ_WALL_H2     = {"id": "kitchen_wall",  "x_rule": ["last 2"],  "y_rule": ["skip last 2"],       "modules": ["kitchen_wall"]}
-_KZ_WALL_H3     = {"id": "kitchen_wall",  "x_rule": ["last 2"],  "y_rule": ["skip last 3"],       "modules": ["kitchen_wall"]}
+_KZ_WALL_H2     = {"id": "kitchen_wall",  "x_rule": ["last 2"],  "y_rule": ["skip last 2"],       "modules": ["corridor_right_short"]}
+_KZ_WALL_H3     = {"id": "kitchen_wall",  "x_rule": ["last 2"],  "y_rule": ["skip last 3"],       "modules": ["corridor_right_short"]}
 
 _KITCHEN_SHELF_H2 = [
     "shelf_h2_v1", "shelf_h2_v2", "shelf_h2_v3", "shelf_h2_v4",
@@ -1357,7 +1357,7 @@ KITCHEN_ZONES_SHELF_H3 = [
 ]
 KITCHEN_ZONES_CORR_RIGHT_SHELF_H2 = [
     {"id": "shelf", "x_rule": ["full"], "y_rule": ["last 2"], "modules": _KITCHEN_SHELF_H2_CORR_R},
-    _KZ_LOWER, _KZ_UPPER_TO_H2, {**_KZ_WALL_H2, "modules": ["kitchen_wall_corr_r"]},
+    _KZ_LOWER, _KZ_UPPER_TO_H2, {**_KZ_WALL_H2, "modules": ["corridor_right_short"]},
 ]
 KITCHEN_ZONES_CORR_LEFT_SHELF_H2 = [
     {"id": "shelf", "x_rule": ["full"], "y_rule": ["last 2"], "modules": _KITCHEN_SHELF_H2_CORR_L},
