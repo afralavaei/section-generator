@@ -7,14 +7,12 @@ from modules import (
     ZONES_FULL_ROOF_CORR_RIGHT, ZONES_FULL_ROOF_CORR_LEFT,
     ZONES_FULL_ROOF_CORR_RIGHT_1CHAIR, ZONES_FULL_ROOF_CORR_LEFT_1CHAIR,
     _TABLE_COMPACT, _TABLE_SPACIOUS, _SHELF_CATEGORY,
-    KITCHEN_ZONES, KITCHEN_ZONES_CORR_RIGHT, KITCHEN_ZONES_CORR_LEFT,
-    KITCHEN_ZONES_SHELF_H2, KITCHEN_ZONES_SHELF_H3,
-    KITCHEN_ZONES_CORR_RIGHT_SHELF_H2, KITCHEN_ZONES_CORR_LEFT_SHELF_H2,
-    KITCHEN_ZONES_CORR_RIGHT_SHELF_H3, KITCHEN_ZONES_CORR_LEFT_SHELF_H3,
-    KITCHEN_ZONES_INNER, KITCHEN_ZONES_INNER_CORR_RIGHT, KITCHEN_ZONES_INNER_CORR_LEFT,
+    KITCHEN_ZONES_INNER,
     LIVING_ZONES, LIVING_ZONES_CORR_RIGHT, LIVING_ZONES_CORR_LEFT,
     LIVING_ZONES_INNER, LIVING_ZONES_INNER_CORR_RIGHT, LIVING_ZONES_INNER_CORR_LEFT,
     _TABLE_COMPACT_LIVING, _TABLE_SPACIOUS_LIVING,
+    LIVING_ZONES_SOFA_TABLE, LIVING_ZONES_SOFA_TABLE_CORR_RIGHT, LIVING_ZONES_SOFA_TABLE_INNER_CORR_RIGHT,
+    LIVING_ZONES_SOFA_TV, LIVING_ZONES_SOFA_TV_CORR_RIGHT, LIVING_ZONES_SOFA_TV_INNER_CORR_RIGHT,
 )
 
 
@@ -307,7 +305,8 @@ def _make_full_roof_shelf(shelf_mid: str, W: int, x_post: float) -> str:
 def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2,
           dining_style: str = "compact", roof_style: str = "any",
           section: str = "dining",
-          preferred_tags: list | None = None) -> Optional[List[dict]]:
+          preferred_tags: list | None = None,
+          living_combo: str = "full") -> Optional[List[dict]]:
     """
     Two-phase backtracking solver.
     Phase 1: place named zone modules (chair, table, shelf, …).
@@ -324,66 +323,54 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
     filler_ids = [mid for mid, m in MODULES.items() if m["zone"] == "filler"]
 
     if section == "kitchen":
-        if corridor in ("corridor_right", "corridor_left"):
-            inner_W = W - corridor_w
-            x_offset = 0 if corridor == "corridor_right" else corridor_w
-            # Full-roof: pick shelf (respects roof_style), place short corridor beneath it
-            shelf_pool = [mid for mid, m in MODULES.items()
-                          if m["zone"] == "shelf"
-                          and not mid.startswith("_frs_")
-                          and not mid.endswith(("_corr_r", "_corr_l"))
-                          and "narrow" not in mid]
-            if roof_style != "any":
-                shelf_pool = [m for m in shelf_pool if _SHELF_CATEGORY.get(m) == roof_style]
-            rng.shuffle(shelf_pool)
-            by_h_k: dict = {}
-            for mid in shelf_pool:
-                sh = MODULES[mid]["h"]
-                if H - sh >= 4:  # need at least 4 rows for lower cabinet (h=3) + top row
-                    by_h_k.setdefault(sh, []).append(mid)
-            if not by_h_k:
-                return None
-            shelf_h = rng.choice(list(by_h_k.keys()))
-            shelf_mid = rng.choice(by_h_k[shelf_h])
-            x_post = float(inner_W) - 0.5 if corridor == "corridor_right" else float(corridor_w) + 0.5
-            shelf_mid = _make_full_roof_shelf(shelf_mid, W, x_post)
-            H_solve_k = H - shelf_h
-            spacious_k = corridor_w >= 4
-            if corridor == "corridor_right":
-                corr_mid = "corridor_right_spacious_short" if spacious_k else "corridor_right_short"
-                active_zones_k = KITCHEN_ZONES_INNER_CORR_RIGHT
-            else:
-                corr_mid = "corridor_left_spacious_short" if spacious_k else "corridor_left_short"
-                active_zones_k = KITCHEN_ZONES_INNER_CORR_LEFT
-            placed: List[dict] = [
-                {"module_id": corr_mid,
-                 "x_off": float(W - corridor_w) if corridor == "corridor_right" else 0.0,
-                 "y_off": 0.0, "w": corridor_w, "h": H_solve_k},
-                {"module_id": shelf_mid,
-                 "x_off": 0.0, "y_off": float(H_solve_k), "w": W, "h": shelf_h},
+        # Corridor always on the right — same full-roof approach as dining.
+        inner_W, x_offset = W - corridor_w, 0
+        spacious_k = corridor_w >= 4
+
+        shelf_pool = [mid for mid, m in MODULES.items()
+                      if m["zone"] == "shelf"
+                      and not mid.startswith("_frs_")
+                      and not mid.endswith(("_corr_r", "_corr_l"))
+                      and "narrow" not in mid]
+        if roof_style != "any":
+            shelf_pool = [m for m in shelf_pool if _SHELF_CATEGORY.get(m) == roof_style]
+        rng.shuffle(shelf_pool)
+        by_h_k: dict = {}
+        for mid in shelf_pool:
+            sh = MODULES[mid]["h"]
+            if H - sh >= 4:
+                by_h_k.setdefault(sh, []).append(mid)
+        if not by_h_k:
+            return None
+        shelf_h = rng.choice(list(by_h_k.keys()))
+        shelf_mid = rng.choice(by_h_k[shelf_h])
+        if inner_W >= 6:
+            shelf_mid = _make_full_roof_shelf(shelf_mid, W, float(inner_W) - 0.5)
+        H_solve_k = H - shelf_h
+
+        corr_mid_k = "corridor_right_spacious_short" if spacious_k else "corridor_right_short"
+
+        _wide_k = rng.choice([True, False])
+        _lower_k = "kitchen_lower_w3_h4_v3" if _wide_k else "kitchen_lower_w3_h4_v2"
+        _upper_k = (["kitchen_upper_w2_h1_wide", "kitchen_upper_w2_h2_wide", "kitchen_upper_w2_h3_wide", "kitchen_upper_w2_h4_wide"]
+                    if _wide_k else
+                    ["kitchen_upper_w2_h1", "kitchen_upper_w2_h2", "kitchen_upper_w2_h3", "kitchen_upper_w2_h4"])
+
+        def _pair_k(scenario):
+            return [
+                {**z, "modules": [_lower_k]}  if z["id"] == "lower_cabinet" else
+                {**z, "modules": _upper_k}    if z["id"] == "upper_cabinet"  else
+                z for z in scenario
+                if z["id"] != "kitchen_wall"
             ]
-        else:
-            inner_W, x_offset = W, 0
-            H_solve_k = H
-            placed = []
-            scenario_pool = [KITCHEN_ZONES]
-            if H >= 6:
-                scenario_pool.append(KITCHEN_ZONES_SHELF_H2)
-            if H >= 7:
-                scenario_pool.append(KITCHEN_ZONES_SHELF_H3)
-            if roof_style != "any":
-                def _shelf_ok_k(mid: str) -> bool:
-                    return _SHELF_CATEGORY.get(mid, "any") == roof_style
-                filtered_pool = []
-                for scenario in scenario_pool:
-                    flt = [{**z, "modules": [m for m in z["modules"] if _shelf_ok_k(m)]}
-                           if z.get("id") == "shelf" else z
-                           for z in scenario]
-                    if all(z["modules"] for z in flt if z.get("id") == "shelf"):
-                        filtered_pool.append(flt)
-                if filtered_pool:
-                    scenario_pool = filtered_pool
-            active_zones_k = rng.choice(scenario_pool)
+
+        active_zones_k = _pair_k(KITCHEN_ZONES_INNER)
+        placed: List[dict] = [
+            {"module_id": corr_mid_k,
+             "x_off": float(inner_W), "y_off": 0.0, "w": corridor_w, "h": H_solve_k},
+            {"module_id": shelf_mid,
+             "x_off": 0.0, "y_off": float(H_solve_k), "w": W, "h": shelf_h},
+        ]
 
         reg_candidates: List[List[dict]] = []
         for zone in active_zones_k:
@@ -445,79 +432,169 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
         return placed if bt_k(0) else None
 
     if section == "living":
-        # Compact (inner_W=7): sofa(3)+table(2)+tv_table(2), no gap columns.
-        # Spacious (inner_W=9): sofa(3)+gap+table(2)+gap+tv_table(2).
-        is_compact_l = dining_style == "compact"
-        table_x_l    = "from 3 size 2" if is_compact_l else "from 4 size 2"
-        table_mods_l = _TABLE_COMPACT_LIVING if is_compact_l else _TABLE_SPACIOUS_LIVING
+        # ── shared shelf-filter helper ─────────────────────────────────────────
+        def _filter_shelf(zones):
+            if roof_style == "any":
+                return list(zones)
+            def _ok(mid):
+                return _SHELF_CATEGORY.get(mid.replace("_corr_r","").replace("_corr_l",""), "any") == roof_style
+            return [{**z, "modules": [m for m in z["modules"] if _ok(m)]}
+                    if z.get("id") == "shelf" else z for z in zones]
 
-        def _patch_l(zones):
-            """Replace table zone's x_rule and modules; apply roof_style to shelf."""
-            out = []
-            for z in zones:
-                if z.get("id") == "table":
-                    z = {**z, "x_rule": [table_x_l], "modules": table_mods_l}
-                elif z.get("id") == "shelf" and roof_style != "any":
-                    def _shelf_ok_l(mid: str) -> bool:
-                        return _SHELF_CATEGORY.get(mid.replace("_corr_r", "").replace("_corr_l", ""), "any") == roof_style
-                    z = {**z, "modules": [m for m in z["modules"] if _shelf_ok_l(m)]}
-                out.append(z)
-            return out
-
-        if corridor in ("corridor_right", "corridor_left"):
-            inner_W = W - corridor_w
-            x_offset = 0 if corridor == "corridor_right" else corridor_w
-            # Full-roof: pick shelf (respects roof_style), place short corridor beneath it
-            shelf_pool_l = [mid for mid, m in MODULES.items()
-                            if m["zone"] == "shelf"
-                            and not mid.startswith("_frs_")
-                            and not mid.endswith(("_corr_r", "_corr_l"))
-                            and "narrow" not in mid]
+        # ── shared corridor-path helper (full-roof + fallback) ─────────────────
+        def _living_corridor_right(inner_z, full_z, add_post: bool = True):
+            """Returns (placed, active_zones, inner_W) for corridor_right path."""
+            nonlocal H
+            iW = W - corridor_w
+            shelf_pool = [mid for mid, m in MODULES.items()
+                          if m["zone"] == "shelf"
+                          and not mid.startswith("_frs_")
+                          and not mid.endswith(("_corr_r", "_corr_l"))
+                          and "narrow" not in mid]
             if roof_style != "any":
-                shelf_pool_l = [m for m in shelf_pool_l if _SHELF_CATEGORY.get(m) == roof_style]
-            rng.shuffle(shelf_pool_l)
-            by_h_l: dict = {}
-            for mid in shelf_pool_l:
+                sp = [m for m in shelf_pool if _SHELF_CATEGORY.get(m) == roof_style]
+                if sp:
+                    shelf_pool = sp
+            rng.shuffle(shelf_pool)
+            by_h: dict = {}
+            for mid in shelf_pool:
                 sh = MODULES[mid]["h"]
                 if H - sh >= 3:
-                    by_h_l.setdefault(sh, []).append(mid)
-            if by_h_l:
-                shelf_h = rng.choice(list(by_h_l.keys()))
-                shelf_mid_l = rng.choice(by_h_l[shelf_h])
-                x_post_l = float(inner_W) - 0.5 if corridor == "corridor_right" else float(corridor_w) + 0.5
-                shelf_mid_l = _make_full_roof_shelf(shelf_mid_l, W, x_post_l)
-                H_solve_l = H - shelf_h
-                spacious_l = corridor_w >= 4
-                if corridor == "corridor_right":
-                    corr_mid = "corridor_right_spacious_short" if spacious_l else "corridor_right_short"
-                    active_zones = _patch_l(LIVING_ZONES_INNER_CORR_RIGHT)
-                else:
-                    corr_mid = "corridor_left_spacious_short" if spacious_l else "corridor_left_short"
-                    active_zones = _patch_l(LIVING_ZONES_INNER_CORR_LEFT)
-                placed = [
-                    {"module_id": corr_mid,
-                     "x_off": float(W - corridor_w) if corridor == "corridor_right" else 0.0,
-                     "y_off": 0.0, "w": corridor_w, "h": H_solve_l},
-                    {"module_id": shelf_mid_l,
-                     "x_off": 0.0, "y_off": float(H_solve_l), "w": W, "h": shelf_h},
-                ]
-                H = H_solve_l  # inner zones resolve against lower portion only
+                    by_h.setdefault(sh, []).append(mid)
+            if by_h:
+                sh_h = rng.choice(list(by_h.keys()))
+                sh_mid = rng.choice(by_h[sh_h])
+                if add_post:
+                    sh_mid = _make_full_roof_shelf(sh_mid, W, float(iW) - 0.5)
+                H_s = H - sh_h
+                spacious = corridor_w >= 4
+                cm = "corridor_right_spacious_short" if spacious else "corridor_right_short"
+                pl = [{"module_id": cm,  "x_off": float(iW), "y_off": 0.0, "w": corridor_w, "h": H_s},
+                      {"module_id": sh_mid, "x_off": 0.0, "y_off": float(H_s), "w": W, "h": sh_h}]
+                H = H_s
+                return pl, _filter_shelf(inner_z), iW
             else:
-                # Fallback: full-height corridor with shelf in zone
-                if corridor == "corridor_right":
-                    corr_mid = "corridor_right_spacious" if corridor_w >= 4 else "corridor_right"
-                    placed = [{"module_id": corr_mid, "x_off": float(W - corridor_w),
-                               "y_off": 0.0, "w": corridor_w, "h": H}]
-                    active_zones = _patch_l(LIVING_ZONES_CORR_RIGHT)
+                cm = "corridor_right_spacious" if corridor_w >= 4 else "corridor_right"
+                pl = [{"module_id": cm, "x_off": float(W - corridor_w), "y_off": 0.0, "w": corridor_w, "h": H}]
+                return pl, _filter_shelf(full_z), iW
+
+        # ── sub-combos: sofa+table or sofa+tv ─────────────────────────────────
+        if living_combo == "sofa_table":
+            # Table always at "last 2" of inner_W.
+            # corridor_right or living_wall_right (1-wide) absorbs table's right port.
+            if corridor == "corridor_right":
+                placed, active_zones, inner_W = _living_corridor_right(
+                    LIVING_ZONES_SOFA_TABLE_INNER_CORR_RIGHT,
+                    LIVING_ZONES_SOFA_TABLE_CORR_RIGHT,
+                    add_post=False)
+                x_offset = 0
+            else:
+                # Pre-place wall_right (1 col) + shelf above; table at "last 2" of inner_W=W-1.
+                inner_W, x_offset = W - 1, 0
+                shelf_pool_st = [mid for mid, m in MODULES.items()
+                                 if m["zone"] == "shelf" and not mid.startswith("_frs_")
+                                 and not mid.endswith(("_corr_r", "_corr_l")) and "narrow" not in mid]
+                if roof_style != "any":
+                    shelf_pool_st = [m for m in shelf_pool_st if _SHELF_CATEGORY.get(m) == roof_style]
+                rng.shuffle(shelf_pool_st)
+                by_h_st: dict = {}
+                for mid in shelf_pool_st:
+                    sh = MODULES[mid]["h"]
+                    if H - sh >= 3:
+                        by_h_st.setdefault(sh, []).append(mid)
+                if by_h_st:
+                    shelf_h = rng.choice(list(by_h_st.keys()))
+                    shelf_mid_st = rng.choice(by_h_st[shelf_h])
+                    H_solve_st = H - shelf_h
+                    placed = [
+                        {"module_id": "living_wall_right",
+                         "x_off": float(inner_W), "y_off": 0.0, "w": 1, "h": H_solve_st},
+                        {"module_id": shelf_mid_st,
+                         "x_off": 0.0, "y_off": float(H_solve_st), "w": W, "h": shelf_h},
+                    ]
+                    H = H_solve_st
                 else:
-                    corr_mid = "corridor_left_spacious" if corridor_w >= 4 else "corridor_left"
-                    placed = [{"module_id": corr_mid, "x_off": 0.0,
-                               "y_off": 0.0, "w": corridor_w, "h": H}]
-                    active_zones = _patch_l(LIVING_ZONES_CORR_LEFT)
+                    placed = [{"module_id": "living_wall_right",
+                               "x_off": float(inner_W), "y_off": 0.0, "w": 1, "h": H}]
+                active_zones = _filter_shelf(LIVING_ZONES_SOFA_TABLE_INNER_CORR_RIGHT)
+
+        elif living_combo == "sofa_tv":
+            if corridor == "corridor_right":
+                placed, active_zones, inner_W = _living_corridor_right(
+                    LIVING_ZONES_SOFA_TV_INNER_CORR_RIGHT,
+                    LIVING_ZONES_SOFA_TV_CORR_RIGHT)
+                x_offset = 0
+            else:
+                inner_W, x_offset = W, 0
+                placed = []
+                active_zones = _filter_shelf(LIVING_ZONES_SOFA_TV)
+
+        # ── full combo: sofa + table + tv_table ────────────────────────────────
         else:
-            inner_W, x_offset = W, 0
-            placed = []
-            active_zones = _patch_l(LIVING_ZONES)
+            is_compact_l = dining_style == "compact"
+            table_x_l    = "from 3 size 2" if is_compact_l else "from 4 size 2"
+            table_mods_l = _TABLE_COMPACT_LIVING if is_compact_l else _TABLE_SPACIOUS_LIVING
+
+            def _patch_l(zones):
+                out = []
+                for z in zones:
+                    if z.get("id") == "table":
+                        z = {**z, "x_rule": [table_x_l], "modules": table_mods_l}
+                    out.append(z)
+                return _filter_shelf(out)
+
+            if corridor in ("corridor_right", "corridor_left"):
+                inner_W = W - corridor_w
+                x_offset = 0 if corridor == "corridor_right" else corridor_w
+                shelf_pool_l = [mid for mid, m in MODULES.items()
+                                if m["zone"] == "shelf"
+                                and not mid.startswith("_frs_")
+                                and not mid.endswith(("_corr_r", "_corr_l"))
+                                and "narrow" not in mid]
+                if roof_style != "any":
+                    shelf_pool_l = [m for m in shelf_pool_l if _SHELF_CATEGORY.get(m) == roof_style]
+                rng.shuffle(shelf_pool_l)
+                by_h_l: dict = {}
+                for mid in shelf_pool_l:
+                    sh = MODULES[mid]["h"]
+                    if H - sh >= 3:
+                        by_h_l.setdefault(sh, []).append(mid)
+                if by_h_l:
+                    shelf_h = rng.choice(list(by_h_l.keys()))
+                    shelf_mid_l = rng.choice(by_h_l[shelf_h])
+                    x_post_l = float(inner_W) - 0.5 if corridor == "corridor_right" else float(corridor_w) + 0.5
+                    shelf_mid_l = _make_full_roof_shelf(shelf_mid_l, W, x_post_l)
+                    H_solve_l = H - shelf_h
+                    spacious_l = corridor_w >= 4
+                    if corridor == "corridor_right":
+                        corr_mid = "corridor_right_spacious_short" if spacious_l else "corridor_right_short"
+                        active_zones = _patch_l(LIVING_ZONES_INNER_CORR_RIGHT)
+                    else:
+                        corr_mid = "corridor_left_spacious_short" if spacious_l else "corridor_left_short"
+                        active_zones = _patch_l(LIVING_ZONES_INNER_CORR_LEFT)
+                    placed = [
+                        {"module_id": corr_mid,
+                         "x_off": float(W - corridor_w) if corridor == "corridor_right" else 0.0,
+                         "y_off": 0.0, "w": corridor_w, "h": H_solve_l},
+                        {"module_id": shelf_mid_l,
+                         "x_off": 0.0, "y_off": float(H_solve_l), "w": W, "h": shelf_h},
+                    ]
+                    H = H_solve_l
+                else:
+                    if corridor == "corridor_right":
+                        corr_mid = "corridor_right_spacious" if corridor_w >= 4 else "corridor_right"
+                        placed = [{"module_id": corr_mid, "x_off": float(W - corridor_w),
+                                   "y_off": 0.0, "w": corridor_w, "h": H}]
+                        active_zones = _patch_l(LIVING_ZONES_CORR_RIGHT)
+                    else:
+                        corr_mid = "corridor_left_spacious" if corridor_w >= 4 else "corridor_left"
+                        placed = [{"module_id": corr_mid, "x_off": 0.0,
+                                   "y_off": 0.0, "w": corridor_w, "h": H}]
+                        active_zones = _patch_l(LIVING_ZONES_CORR_LEFT)
+            else:
+                inner_W, x_offset = W, 0
+                placed = []
+                active_zones = _patch_l(LIVING_ZONES)
     else:
         effective_roof = roof_style
 
@@ -691,6 +768,10 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
         cl = next((p for p in placed if MODULES[p["module_id"]]["zone"] in ("chair_left", "sofa")),  None)
         cr = next((p for p in placed if MODULES[p["module_id"]]["zone"] in ("chair_right", "tv_table")), None)
         if cl is None or cr is None:
+            return True
+        # sofa+tv_table are distinct furniture types — no height/style match required
+        if (MODULES[cl["module_id"]]["zone"] == "sofa"
+                or MODULES[cr["module_id"]]["zone"] == "tv_table"):
             return True
         ml, mr = MODULES[cl["module_id"]], MODULES[cr["module_id"]]
         return (cl["h"] == cr["h"]

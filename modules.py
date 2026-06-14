@@ -613,108 +613,8 @@ MODULES: Dict[str, dict] = {
         },
     },
 
-    #-------TV_Table_Modules_(Living)----------------------------------------
+    #-------TV_Table_Modules_(Living) — h2 only --------------------------------
 
-    "tv_table_h3_v1": {
-        "id": "tv_table_h3_v1",
-        "w": 2, "h": 3,
-        "zone": "tv_table",
-        "description": "TV table, height 3. Single polyline — top through high seat to left leg.",
-        "tags": ["diagonal", "compact", "h3", "living"],
-        "segments": [
-            [(1.5, 3.0), (1.5, 2.5), (0.5, 2.5), (0.5, 0.5), (0.0, 0.5)],
-        ],
-        "ports": {
-            "top":    [(1.5, 3.0)],
-            "bottom": [],
-            "left":   [(0.0, 0.5)],
-            "right":  [],
-        },
-    },
-    "tv_table_h3_v2": {
-        "id": "tv_table_h3_v2",
-        "w": 2, "h": 3,
-        "zone": "tv_table",
-        "description": "TV table, height 3. Tall closed rectangular cabinet with stem and left leg.",
-        "tags": ["rectilinear", "closed", "high-detail", "h3", "living"],
-        "segments": [
-            [(1.5, 3.0), (1.5, 2.5)],
-            [(1.5, 2.5), (0.5, 2.5), (0.5, 0.5), (1.5, 0.5), (1.5, 2.5)],
-            [(0.5, 0.5), (0.0, 0.5)],
-        ],
-        "ports": {
-            "top":    [(1.5, 3.0)],
-            "bottom": [],
-            "left":   [(0.0, 0.5)],
-            "right":  [],
-        },
-    },
-    "tv_table_h3_v3": {
-        "id": "tv_table_h3_v3",
-        "w": 2, "h": 3,
-        "zone": "tv_table",
-        "description": "TV table, height 3. Closed cabinet set lower, leaving more space above.",
-        "tags": ["rectilinear", "closed", "h3", "living"],
-        "segments": [
-            [(1.5, 3.0), (1.5, 2.0)],
-            [(1.5, 2.0), (0.5, 2.0), (0.5, 0.5), (1.5, 0.5), (1.5, 2.0)],
-            [(0.5, 0.5), (0.0, 0.5)],
-        ],
-        "ports": {
-            "top":    [(1.5, 3.0)],
-            "bottom": [],
-            "left":   [(0.0, 0.5)],
-            "right":  [],
-        },
-    },
-    "tv_table_h3_v4": {
-        "id": "tv_table_h3_v4",
-        "w": 2, "h": 3,
-        "zone": "tv_table",
-        "description": "TV table, height 3. Diagonal from top to a lower shelf position and left leg.",
-        "tags": ["diagonal", "compact", "h3", "living"],
-        "segments": [
-            [(1.5, 3.0), (1.5, 2.0), (0.5, 2.0), (0.5, 0.5), (0.0, 0.5)],
-        ],
-        "ports": {
-            "top":    [(1.5, 3.0)],
-            "bottom": [],
-            "left":   [(0.0, 0.5)],
-            "right":  [],
-        },
-    },
-    "tv_table_h3_v5": {
-        "id": "tv_table_h3_v5",
-        "w": 2, "h": 3,
-        "zone": "tv_table",
-        "description": "TV table, height 3. High shelf with a V-tip at the base leading to the left leg.",
-        "tags": ["angled", "v-tip", "h3", "living"],
-        "segments": [
-            [(1.5, 3.0), (1.5, 2.5), (0.5, 2.5), (1.0, 0.5), (0.0, 0.5)],
-        ],
-        "ports": {
-            "top":    [(1.5, 3.0)],
-            "bottom": [],
-            "left":   [(0.0, 0.5)],
-            "right":  [],
-        },
-    },
-    "tv_table_h3_v6": {
-        "id": "tv_table_h3_v6",
-        "w": 2, "h": 3,
-        "zone": "tv_table",
-        "description": "TV table, height 3. Lower shelf with a V-tip at the base leading to the left leg.",
-        "tags": ["angled", "v-tip", "h3", "living"],
-        "segments": [
-            [(1.5, 3.0), (1.5, 2.0), (0.5, 2.0), (1.0, 0.5), (0.0, 0.5)],
-        ],
-        "ports": {
-            "top":    [(1.5, 3.0)],
-            "bottom": [],
-            "left":   [(0.0, 0.5)],
-            "right":  [],
-        },
-    },
     "tv_table_h2_v1": {
         "id": "tv_table_h2_v1",
         "w": 2, "h": 2,
@@ -1011,19 +911,104 @@ MODULES: Dict[str, dict] = {
         ],
         "ports": {"top": [(0.5, 3.0)], "right": [(3.0, 0.5)], "bottom": [], "left": []},
     },
-
-    # ── Kitchen: upper cabinet (height-scalable) ──────────────────────────────
-    "kitchen_upper_w2": {
-        "id": "kitchen_upper_w2", "w": 2, "h": 3, "zone": "upper_cabinet",
-        "h_scalable": True,
-        "description": "Kitchen upper cabinet, 2 wide, height-scalable.",
-        "tags": ["kitchen", "upper-cabinet", "w2"],
-        "wh_segments_fn": lambda w, h: [
-            [(0.5, 0.0), (0.5, 0.5)],
-            [(0.5, h - 0.5), (0.5, h)],
-            [(0.5, 0.5), (w - 0.5, 0.5), (w - 0.5, h - 0.5), (0.5, h - 0.5), (0.5, 0.5)],
+    "kitchen_lower_w3_h4_v3": {
+        "id": "kitchen_lower_w3_h4_v3", "w": 3, "h": 3, "zone": "lower_cabinet",
+        "description": "Kitchen lower cabinet, 3 wide × 3 tall — wider body (cols 0–2) with right exit.",
+        "tags": ["kitchen", "lower-cabinet", "w3", "h4", "right-exit", "wide"],
+        "segments": [
+            [(0.5, 3.0), (0.5, 2.5)],
+            [(0.5, 2.5), (2.5, 2.5), (2.5, 0.5), (2.0, 0.5), (0.5, 0.5), (0.5, 2.5)],
+            [(2.0, 0.5), (3.0, 0.5)],
         ],
-        "wh_ports_fn": lambda _w, h: {"bottom": [(0.5, 0.0)], "top": [(0.5, h)], "left": [], "right": []},
+        "ports": {"top": [(0.5, 3.0)], "right": [(3.0, 0.5)], "bottom": [], "left": []},
+    },
+
+    # ── Kitchen: upper cabinet — fixed-height variants (narrow + wide body) ─────
+    "kitchen_upper_w2_h1": {
+        "id": "kitchen_upper_w2_h1", "w": 2, "h": 1, "zone": "upper_cabinet",
+        "description": "Kitchen upper cabinet, 2 wide × 1 tall — shelf: post + closed floating bracket.",
+        "tags": ["kitchen", "upper-cabinet", "w2", "h1"],
+        "segments": [
+            [(0.5, 0.0), (0.5, 1.0)],
+            [(0.5, 0.2), (1.5, 0.2), (1.5, 0.8), (0.5, 0.8), (0.5, 0.2)],
+        ],
+        "ports": {"bottom": [(0.5, 0.0)], "top": [(0.5, 1.0)], "left": [], "right": []},
+    },
+    "kitchen_upper_w2_h1_wide": {
+        "id": "kitchen_upper_w2_h1_wide", "w": 2, "h": 1, "zone": "upper_cabinet",
+        "description": "Kitchen upper cabinet, 2 wide × 1 tall — wide shelf: post + wide closed bracket.",
+        "tags": ["kitchen", "upper-cabinet", "w2", "h1", "wide"],
+        "segments": [
+            [(0.5, 0.0), (0.5, 1.0)],
+            [(0.5, 0.2), (2.0, 0.2), (2.0, 0.8), (0.5, 0.8), (0.5, 0.2)],
+        ],
+        "ports": {"bottom": [(0.5, 0.0)], "top": [(0.5, 1.0)], "left": [], "right": []},
+    },
+    "kitchen_upper_w2_h2": {
+        "id": "kitchen_upper_w2_h2", "w": 2, "h": 2, "zone": "upper_cabinet",
+        "description": "Kitchen upper cabinet, 2 wide × 2 tall.",
+        "tags": ["kitchen", "upper-cabinet", "w2", "h2"],
+        "segments": [
+            [(0.5, 0.0), (0.5, 0.5)],
+            [(0.5, 1.5), (0.5, 2.0)],
+            [(0.5, 0.5), (1.5, 0.5), (1.5, 1.5), (0.5, 1.5), (0.5, 0.5)],
+        ],
+        "ports": {"bottom": [(0.5, 0.0)], "top": [(0.5, 2.0)], "left": [], "right": []},
+    },
+    "kitchen_upper_w2_h2_wide": {
+        "id": "kitchen_upper_w2_h2_wide", "w": 2, "h": 2, "zone": "upper_cabinet",
+        "description": "Kitchen upper cabinet, 2 wide × 2 tall — wide body.",
+        "tags": ["kitchen", "upper-cabinet", "w2", "h2", "wide"],
+        "segments": [
+            [(0.5, 0.0), (0.5, 0.5)],
+            [(0.5, 1.5), (0.5, 2.0)],
+            [(0.5, 0.5), (2.0, 0.5), (2.0, 1.5), (0.5, 1.5), (0.5, 0.5)],
+        ],
+        "ports": {"bottom": [(0.5, 0.0)], "top": [(0.5, 2.0)], "left": [], "right": []},
+    },
+    "kitchen_upper_w2_h3": {
+        "id": "kitchen_upper_w2_h3", "w": 2, "h": 3, "zone": "upper_cabinet",
+        "description": "Kitchen upper cabinet, 2 wide × 3 tall.",
+        "tags": ["kitchen", "upper-cabinet", "w2", "h3"],
+        "segments": [
+            [(0.5, 0.0), (0.5, 0.5)],
+            [(0.5, 2.5), (0.5, 3.0)],
+            [(0.5, 0.5), (1.5, 0.5), (1.5, 2.5), (0.5, 2.5), (0.5, 0.5)],
+        ],
+        "ports": {"bottom": [(0.5, 0.0)], "top": [(0.5, 3.0)], "left": [], "right": []},
+    },
+    "kitchen_upper_w2_h3_wide": {
+        "id": "kitchen_upper_w2_h3_wide", "w": 2, "h": 3, "zone": "upper_cabinet",
+        "description": "Kitchen upper cabinet, 2 wide × 3 tall — wide body.",
+        "tags": ["kitchen", "upper-cabinet", "w2", "h3", "wide"],
+        "segments": [
+            [(0.5, 0.0), (0.5, 0.5)],
+            [(0.5, 2.5), (0.5, 3.0)],
+            [(0.5, 0.5), (2.0, 0.5), (2.0, 2.5), (0.5, 2.5), (0.5, 0.5)],
+        ],
+        "ports": {"bottom": [(0.5, 0.0)], "top": [(0.5, 3.0)], "left": [], "right": []},
+    },
+    "kitchen_upper_w2_h4": {
+        "id": "kitchen_upper_w2_h4", "w": 2, "h": 4, "zone": "upper_cabinet",
+        "description": "Kitchen upper cabinet, 2 wide × 4 tall.",
+        "tags": ["kitchen", "upper-cabinet", "w2", "h4"],
+        "segments": [
+            [(0.5, 0.0), (0.5, 0.5)],
+            [(0.5, 3.5), (0.5, 4.0)],
+            [(0.5, 0.5), (1.5, 0.5), (1.5, 3.5), (0.5, 3.5), (0.5, 0.5)],
+        ],
+        "ports": {"bottom": [(0.5, 0.0)], "top": [(0.5, 4.0)], "left": [], "right": []},
+    },
+    "kitchen_upper_w2_h4_wide": {
+        "id": "kitchen_upper_w2_h4_wide", "w": 2, "h": 4, "zone": "upper_cabinet",
+        "description": "Kitchen upper cabinet, 2 wide × 4 tall — wide body.",
+        "tags": ["kitchen", "upper-cabinet", "w2", "h4", "wide"],
+        "segments": [
+            [(0.5, 0.0), (0.5, 0.5)],
+            [(0.5, 3.5), (0.5, 4.0)],
+            [(0.5, 0.5), (2.0, 0.5), (2.0, 3.5), (0.5, 3.5), (0.5, 0.5)],
+        ],
+        "ports": {"bottom": [(0.5, 0.0)], "top": [(0.5, 4.0)], "left": [], "right": []},
     },
 
     # ── Kitchen: wall (h-scalable, last 2 cols) ──────────────────────────────
@@ -1034,6 +1019,18 @@ MODULES: Dict[str, dict] = {
         "tags": ["kitchen", "wall", "h-scalable"],
         "h_segments_fn": lambda h: [[(1.5, h), (1.5, 0.5), (0.0, 0.5)]],
         "h_ports_fn":    lambda h: {"top": [(1.5, h)], "left": [(0.0, 0.5)], "bottom": [], "right": []},
+    },
+
+    # ── Living right-wall post ────────────────────────────────────────────────
+    # 1-wide h-scalable closing element for sofa+table sub-combo (no corridor).
+    # Absorbs the table's right port at y=0.5 and connects to the shelf above.
+    "living_wall_right": {
+        "id": "living_wall_right", "w": 1, "h": 6, "zone": "corridor_right",
+        "h_scalable": True,
+        "description": "1-wide right wall post — closes table right port, top connects to shelf.",
+        "tags": ["living", "wall", "h-scalable", "right-side"],
+        "wh_segments_fn": lambda _, H: [[(0.0, 0.5), (0.5, 0.5), (0.5, H)]],
+        "wh_ports_fn":    lambda _, H: {"left": [(0.0, 0.5)], "top": [(0.5, H)], "bottom": [], "right": []},
     },
 
     # ── 1×1 filler tiles ──────────────────────────────────────────────────────
@@ -1182,7 +1179,7 @@ def _build_kitchen_corridor_variants() -> None:
     """
     Build corridor-ready variants of kitchen modules.
     kitchen_wall_corr_r: wall with right stub at y=0.5 (faces corridor_right).
-    kitchen_lower_w3_h4_v2_corr_l: lower cabinet with left stub (faces corridor_left).
+    kitchen_lower_w3_h4_v2: lower cabinet with left stub (faces corridor_left).
     Shelf corridor variants are handled automatically by _build_corridor_variants().
     """
     kw = MODULES["kitchen_wall"]
@@ -1194,11 +1191,6 @@ def _build_kitchen_corridor_variants() -> None:
         **kw, "id": "kitchen_wall_corr_r",
         "h_segments_fn": lambda h, _s=sfn_w: _s(h) + [[(1.5, 0.5), (2.0, 0.5)]],
         "h_ports_fn":    lambda h, _p=pfn_w: {**_p(h), "right": [(2.0, 0.5)]},
-    }
-    MODULES["kitchen_lower_w3_h4_v2_corr_l"] = {
-        **kl, "id": "kitchen_lower_w3_h4_v2_corr_l",
-        "segments": kl["segments"] + [[(0.5, 0.5), (0.0, 0.5)]],
-        "ports":    {**kl["ports"], "left": [(0.0, 0.5)]},
     }
 
 
@@ -1267,8 +1259,8 @@ _SHELF_CATEGORY: dict = {
 # upper_cabinet uses "from 3 to last 0" so it adapts to any H_solve.
 # kitchen_wall uses "full" so it spans all of H_solve.
 KITCHEN_ZONES_INNER = [
-    {"id": "lower_cabinet", "x_rule": ["first 3"], "y_rule": ["first 3"],          "modules": ["kitchen_lower_w3_h4_v2"]},
-    {"id": "upper_cabinet", "x_rule": ["first 2"], "y_rule": ["from 3 to last 0"], "modules": ["kitchen_upper_w2"]},
+    {"id": "lower_cabinet", "x_rule": ["first 3"], "y_rule": ["first 3"],          "modules": ["kitchen_lower_w3_h4_v2", "kitchen_lower_w3_h4_v3"]},
+    {"id": "upper_cabinet", "x_rule": ["first 2"], "y_rule": ["from 3 to last 0"], "modules": ["kitchen_upper_w2_h1", "kitchen_upper_w2_h1_wide", "kitchen_upper_w2_h2", "kitchen_upper_w2_h2_wide", "kitchen_upper_w2_h3", "kitchen_upper_w2_h3_wide", "kitchen_upper_w2_h4", "kitchen_upper_w2_h4_wide"]},
     {"id": "kitchen_wall",  "x_rule": ["last 2"],  "y_rule": ["full"],              "modules": ["corridor_right_short"]},
 ]
 
@@ -1279,7 +1271,7 @@ KITCHEN_ZONES_INNER_CORR_RIGHT = [
 ]
 
 KITCHEN_ZONES_INNER_CORR_LEFT = [
-    {**KITCHEN_ZONES_INNER[0], "modules": ["kitchen_lower_w3_h4_v2_corr_l"]},
+    {**KITCHEN_ZONES_INNER[0], "modules": ["kitchen_lower_w3_h4_v2", "kitchen_lower_w3_h4_v3"]},
     KITCHEN_ZONES_INNER[1],
     KITCHEN_ZONES_INNER[2],
 ]
@@ -1295,13 +1287,13 @@ KITCHEN_ZONES = [
         "id":      "lower_cabinet",
         "x_rule":  ["first 3"],
         "y_rule":  ["first 3"],
-        "modules": ["kitchen_lower_w3_h4_v2"],
+        "modules": ["kitchen_lower_w3_h4_v2", "kitchen_lower_w3_h4_v3"],
     },
     {
         "id":      "upper_cabinet",
         "x_rule":  ["first 2"],
         "y_rule":  ["from 3 size 3"],
-        "modules": ["kitchen_upper_w2"],
+        "modules": ["kitchen_upper_w2_h1", "kitchen_upper_w2_h1_wide", "kitchen_upper_w2_h2", "kitchen_upper_w2_h2_wide", "kitchen_upper_w2_h3", "kitchen_upper_w2_h3_wide", "kitchen_upper_w2_h4", "kitchen_upper_w2_h4_wide"],
     },
     {
         "id":      "kitchen_wall",
@@ -1320,7 +1312,7 @@ KITCHEN_ZONES_CORR_RIGHT = [
 
 KITCHEN_ZONES_CORR_LEFT = [
     {**KITCHEN_ZONES[0], "modules": ["shelf_h1_v1_corr_l"]},
-    {**KITCHEN_ZONES[1], "modules": ["kitchen_lower_w3_h4_v2_corr_l"]},
+    {**KITCHEN_ZONES[1], "modules": ["kitchen_lower_w3_h4_v2", "kitchen_lower_w3_h4_v3"]},
     KITCHEN_ZONES[2],
     KITCHEN_ZONES[3],
 ]
@@ -1329,8 +1321,8 @@ KITCHEN_ZONES_CORR_LEFT = [
 # H>=8: h=2 shelves (lean, pitched, asymmetric) in last 2 rows.
 # H>=9: h=3 shelves (divided, steep lean) in last 3 rows.
 _KZ_LOWER       = KITCHEN_ZONES[1]
-_KZ_UPPER_TO_H2 = {"id": "upper_cabinet", "x_rule": ["first 2"], "y_rule": ["from 3 to last 2"], "modules": ["kitchen_upper_w2"]}
-_KZ_UPPER_TO_H3 = {"id": "upper_cabinet", "x_rule": ["first 2"], "y_rule": ["from 3 to last 3"], "modules": ["kitchen_upper_w2"]}
+_KZ_UPPER_TO_H2 = {"id": "upper_cabinet", "x_rule": ["first 2"], "y_rule": ["from 3 to last 2"], "modules": ["kitchen_upper_w2_h1", "kitchen_upper_w2_h1_wide", "kitchen_upper_w2_h2", "kitchen_upper_w2_h2_wide", "kitchen_upper_w2_h3", "kitchen_upper_w2_h3_wide", "kitchen_upper_w2_h4", "kitchen_upper_w2_h4_wide"]}
+_KZ_UPPER_TO_H3 = {"id": "upper_cabinet", "x_rule": ["first 2"], "y_rule": ["from 3 to last 3"], "modules": ["kitchen_upper_w2_h1", "kitchen_upper_w2_h1_wide", "kitchen_upper_w2_h2", "kitchen_upper_w2_h2_wide", "kitchen_upper_w2_h3", "kitchen_upper_w2_h3_wide", "kitchen_upper_w2_h4", "kitchen_upper_w2_h4_wide"]}
 _KZ_WALL_H2     = {"id": "kitchen_wall",  "x_rule": ["last 2"],  "y_rule": ["skip last 2"],       "modules": ["corridor_right_short"]}
 _KZ_WALL_H3     = {"id": "kitchen_wall",  "x_rule": ["last 2"],  "y_rule": ["skip last 3"],       "modules": ["corridor_right_short"]}
 
@@ -1361,15 +1353,15 @@ KITCHEN_ZONES_CORR_RIGHT_SHELF_H2 = [
 ]
 KITCHEN_ZONES_CORR_LEFT_SHELF_H2 = [
     {"id": "shelf", "x_rule": ["full"], "y_rule": ["last 2"], "modules": _KITCHEN_SHELF_H2_CORR_L},
-    {**_KZ_LOWER, "modules": ["kitchen_lower_w3_h4_v2_corr_l"]}, _KZ_UPPER_TO_H2, _KZ_WALL_H2,
+    {**_KZ_LOWER, "modules": ["kitchen_lower_w3_h4_v2", "kitchen_lower_w3_h4_v3"]}, _KZ_UPPER_TO_H2, _KZ_WALL_H2,
 ]
 KITCHEN_ZONES_CORR_RIGHT_SHELF_H3 = [
     {"id": "shelf", "x_rule": ["full"], "y_rule": ["last 3"], "modules": _KITCHEN_SHELF_H3_CORR_R},
-    _KZ_LOWER, _KZ_UPPER_TO_H3, {**_KZ_WALL_H3, "modules": ["kitchen_wall_corr_r"]},
+    _KZ_LOWER, _KZ_UPPER_TO_H3, {**_KZ_WALL_H3, "modules": ["corridor_right_short"]},
 ]
 KITCHEN_ZONES_CORR_LEFT_SHELF_H3 = [
     {"id": "shelf", "x_rule": ["full"], "y_rule": ["last 3"], "modules": _KITCHEN_SHELF_H3_CORR_L},
-    {**_KZ_LOWER, "modules": ["kitchen_lower_w3_h4_v2_corr_l"]}, _KZ_UPPER_TO_H3, _KZ_WALL_H3,
+    {**_KZ_LOWER, "modules": ["kitchen_lower_w3_h4_v2", "kitchen_lower_w3_h4_v3"]}, _KZ_UPPER_TO_H3, _KZ_WALL_H3,
 ]
 
 # ── Living zone configurations ────────────────────────────────────────────────
@@ -1384,18 +1376,14 @@ LIVING_ZONES = [
         "modules": ["sofa_h3_v1"],
     },
     {
-        "id": "table", "x_rule": ["middle 2"], "y_rule": ["first 3", "first 2"],
+        "id": "table", "x_rule": ["middle 2"], "y_rule": ["first 2"],
         "modules": [
                     "table_h2_v1", "table_h2_v2", "table_h2_v3",
                     "table_h2_v4", "table_h2_v5", "table_h2_v6"],
     },
     {
-        "id": "tv_table", "x_rule": ["last 2"], "y_rule": ["first 3", "first 2"],
-        "modules": [
-            "tv_table_h3_v1", "tv_table_h3_v2", "tv_table_h3_v3",
-            "tv_table_h3_v4", "tv_table_h3_v5", "tv_table_h3_v6",
-            "tv_table_h2_v1", "tv_table_h2_v2", "tv_table_h2_v3",
-        ],
+        "id": "tv_table", "x_rule": ["last 2"], "y_rule": ["first 2"],
+        "modules": ["tv_table_h2_v1", "tv_table_h2_v2", "tv_table_h2_v3"],
     },
     {
         "id": "shelf", "x_rule": ["full"], "y_rule": ["last 1", "last 2", "last 3", "last 4"],
@@ -1409,7 +1397,7 @@ _TABLE_SPACIOUS_LIVING = [m for m in LIVING_ZONES[1]["modules"] if "wide-top"   
 LIVING_ZONES_CORR_RIGHT = [
     LIVING_ZONES[0],
     LIVING_ZONES[1],
-    {**LIVING_ZONES[2], "modules": _TV_CORR_R or ["tv_table_h3_v1"]},
+    {**LIVING_ZONES[2], "modules": _TV_CORR_R or ["tv_table_h2_v1"]},
     {**LIVING_ZONES[3], "modules": _SH_CORR_R},
 ]
 
@@ -1426,7 +1414,7 @@ LIVING_ZONES_INNER = [LIVING_ZONES[0], LIVING_ZONES[1], LIVING_ZONES[2]]
 LIVING_ZONES_INNER_CORR_RIGHT = [
     LIVING_ZONES[0],
     LIVING_ZONES[1],
-    {**LIVING_ZONES[2], "modules": _TV_CORR_R or ["tv_table_h3_v1"]},
+    {**LIVING_ZONES[2], "modules": _TV_CORR_R or ["tv_table_h2_v1"]},
 ]
 
 LIVING_ZONES_INNER_CORR_LEFT = [
@@ -1435,9 +1423,59 @@ LIVING_ZONES_INNER_CORR_LEFT = [
     LIVING_ZONES[2],
 ]
 
+# ── Living sub-combination zone configs ──────────────────────────────────────
+# sofa+table: table at middle, living_wall_right closes the right port.
+# sofa+tv:    tv_table already has no right port — no wall needed.
+# compact table x_rule ("from 3 size 2") is the default; solver patches to
+# "from 4 size 2" for spacious.  Corridor-right variants use "last 2".
+
+_LZ_SOFA  = LIVING_ZONES[0]
+_LZ_SHELF = LIVING_ZONES[3]
+_LZ_TABLE_MODS = LIVING_ZONES[1]["modules"]  # all h2 tables
+
+# sofa + table (no corridor) — wall_right absorbs table's right port
+LIVING_ZONES_SOFA_TABLE = [
+    _LZ_SOFA,
+    {"id": "table",           "x_rule": ["from 3 size 2"], "y_rule": ["first 2"], "modules": _LZ_TABLE_MODS},
+    {"id": "corridor_right",  "x_rule": ["last 1"],        "y_rule": ["full"],    "modules": ["living_wall_right"]},
+    _LZ_SHELF,
+]
+
+# sofa + table with corridor right — table at last 2, corridor absorbs right port
+LIVING_ZONES_SOFA_TABLE_CORR_RIGHT = [
+    _LZ_SOFA,
+    {"id": "table", "x_rule": ["last 2"], "y_rule": ["first 2"], "modules": _LZ_TABLE_MODS},
+    {**_LZ_SHELF, "modules": _SH_CORR_R},
+]
+LIVING_ZONES_SOFA_TABLE_INNER_CORR_RIGHT = [
+    _LZ_SOFA,
+    {"id": "table", "x_rule": ["last 2"], "y_rule": ["first 2"], "modules": _LZ_TABLE_MODS},
+]
+
+# sofa + tv_table (no corridor) — tv_table has no right port, works at last 2
+LIVING_ZONES_SOFA_TV = [
+    _LZ_SOFA,
+    {"id": "tv_table", "x_rule": ["last 2"], "y_rule": ["first 2"],
+     "modules": ["tv_table_h2_v1", "tv_table_h2_v2", "tv_table_h2_v3"]},
+    _LZ_SHELF,
+]
+
+# sofa + tv_table with corridor right — tv_table corr_r absorbs corridor left port
+LIVING_ZONES_SOFA_TV_CORR_RIGHT = [
+    _LZ_SOFA,
+    {"id": "tv_table", "x_rule": ["last 2"], "y_rule": ["first 2"],
+     "modules": _TV_CORR_R or ["tv_table_h2_v1"]},
+    {**_LZ_SHELF, "modules": _SH_CORR_R},
+]
+LIVING_ZONES_SOFA_TV_INNER_CORR_RIGHT = [
+    _LZ_SOFA,
+    {"id": "tv_table", "x_rule": ["last 2"], "y_rule": ["first 2"],
+     "modules": _TV_CORR_R or ["tv_table_h2_v1"]},
+]
+
 # Used by drawing.py to order zones in the module library view
 ZONE_ORDER = [
     "chair_left", "chair_right", "sofa", "tv_table", "table",
-    "lower_cabinet", "upper_cabinet", "kitchen_wall", "shelf",
+    "lower_cabinet", "upper_cabinet", "shelf",
     "corridor_left", "corridor_right", "filler",
 ]

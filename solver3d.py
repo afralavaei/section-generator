@@ -23,7 +23,9 @@ from modules3d import (
     ZONES_3D_CORR_RIGHT, ZONES_3D_CORR_LEFT,
     ZONES_3D_FULL_ROOF_CORR_RIGHT, ZONES_3D_FULL_ROOF_CORR_LEFT,
     ZONES_3D_FULL_ROOF_CORR_RIGHT_1CHAIR, ZONES_3D_FULL_ROOF_CORR_LEFT_1CHAIR,
-    KITCHEN_ZONES_3D, KITCHEN_ZONES_SHELF_H2_3D, KITCHEN_ZONES_SHELF_H3_3D,
+    KITCHEN_ZONES_INNER_3D,
+    LIVING_ZONES_SOFA_TABLE_3D, LIVING_ZONES_SOFA_TV_3D,
+    LIVING_ZONES_3D,
     FILLER_IDS_3D, _SHELF_CAT_3D,
     _TABLE_COMPACT_3D, _TABLE_SPACIOUS_3D,
     get_segments_3d, get_ports_3d,
@@ -322,29 +324,61 @@ def solve3d(W: int, H: int, D: int, seed: int,
             section: str = "dining",
             preferred_tags: list | None = None,
             zone_overrides: dict | None = None,
+            living_combo: str = "full",
             ) -> Optional[List[dict]]:
     """Two-phase backtracking, same shape as solver.solve, with depth D added."""
     rng = random.Random(seed)
 
     if section == "kitchen":
-        placed: List[dict] = []
-        scenario_pool = [KITCHEN_ZONES_3D]
-        if H >= 6:
-            scenario_pool.append(KITCHEN_ZONES_SHELF_H2_3D)
-        if H >= 7:
-            scenario_pool.append(KITCHEN_ZONES_SHELF_H3_3D)
+        # Corridor always on the right — same full-roof approach as dining 3D.
+        inner_W, x_offset = W - corridor_w, 0
+        spacious_k3d = corridor_w >= 4
+
+        _wide_k3d = rng.choice([True, False])
+        _upper_3d_narrow = ["kitchen_upper_w2_h1_3d", "kitchen_upper_w2_h2_3d",
+                             "kitchen_upper_w2_h3_3d", "kitchen_upper_w2_h4_3d"]
+        _upper_3d_wide   = ["kitchen_upper_w2_h1_wide_3d", "kitchen_upper_w2_h2_wide_3d",
+                             "kitchen_upper_w2_h3_wide_3d", "kitchen_upper_w2_h4_wide_3d"]
+        _upper_3d = _upper_3d_wide if _wide_k3d else _upper_3d_narrow
+        _lower_3d = "kitchen_lower_w3_h4_v3_3d" if _wide_k3d else "kitchen_lower_w3_h4_v2_3d"
+
+        shelf_pool = [mid for mid, m in MODULES_3D.items()
+                      if m.get("zone") == "shelf"
+                      and not mid.endswith(("_corr_r", "_corr_l"))
+                      and "frs3d" not in mid]
         if roof_style != "any":
-            filtered = []
-            for scenario in scenario_pool:
-                flt = [{**z, "modules": [m for m in z["modules"]
-                                          if _SHELF_CAT_3D.get(m, "any") == roof_style]}
-                       if z.get("id") == "shelf" else z
-                       for z in scenario]
-                if all(z["modules"] for z in flt if z.get("id") == "shelf"):
-                    filtered.append(flt)
-            if filtered:
-                scenario_pool = filtered
-        active_zones_k = rng.choice(scenario_pool)
+            shelf_pool = [m for m in shelf_pool if _SHELF_CAT_3D.get(m, "any") == roof_style]
+        rng.shuffle(shelf_pool)
+        by_h_k: dict = {}
+        for mid in shelf_pool:
+            sh = MODULES_3D[mid]["h"]
+            if H - sh >= 4:
+                by_h_k.setdefault(sh, []).append(mid)
+        if not by_h_k:
+            return None
+        shelf_h = rng.choice(list(by_h_k.keys()))
+        shelf_mid = rng.choice(by_h_k[shelf_h])
+        if inner_W >= 6:
+            shelf_mid = _make_full_roof_shelf_3d(shelf_mid, W, float(inner_W) - 0.5, D)
+        H_solve_k = H - shelf_h
+
+        def _pair_k3d(scenario):
+            return [
+                {**z, "modules": [_lower_3d]} if z["id"] == "lower_cabinet" else
+                {**z, "modules": _upper_3d}   if z["id"] == "upper_cabinet"  else
+                z for z in scenario
+                if z["id"] != "kitchen_wall"
+            ]
+
+        active_zones_k = _pair_k3d(KITCHEN_ZONES_INNER_3D)
+        placed: List[dict] = [
+            {"module_id": "corridor_right_3d_short",
+             "x_off": float(inner_W), "y_off": 0.0, "z_off": 0.0,
+             "w": corridor_w, "h": H_solve_k, "d": D},
+            {"module_id": shelf_mid,
+             "x_off": 0.0, "y_off": float(H_solve_k), "z_off": 0.0,
+             "w": W, "h": shelf_h, "d": D},
+        ]
 
         reg_candidates_k: List[List[dict]] = []
         for zone in active_zones_k:
@@ -352,14 +386,15 @@ def solve3d(W: int, H: int, D: int, seed: int,
             for xr in zone["x_rule"]:
                 for yr in zone["y_rule"]:
                     for zr in zone.get("z_rule", ["full"]):
-                        res = resolve_zone_position_3d(zone, W, H, D, xr, yr, zr)
+                        res = resolve_zone_position_3d(zone, inner_W, H_solve_k, D, xr, yr, zr)
                         w, h, d = res["w"], res["h"], res["d"]
                         for mid in zone["modules"]:
                             m = MODULES_3D[mid]
                             if _module_fits(m, w, h, d):
                                 options.append({
                                     "module_id": mid,
-                                    "x_off": res["x_off"], "y_off": res["y_off"],
+                                    "x_off": res["x_off"] + x_offset,
+                                    "y_off": res["y_off"],
                                     "z_off": res["z_off"],
                                     "w": w, "h": h, "d": d,
                                 })
@@ -405,6 +440,81 @@ def solve3d(W: int, H: int, D: int, seed: int,
             return False
 
         return placed if bt_k(0) else None
+
+    if section == "living":
+        placed: List[dict] = []
+        if living_combo == "sofa_table":
+            _base_z_l = LIVING_ZONES_SOFA_TABLE_3D
+            is_compact_3l = dining_style == "compact"
+            _table_x_3l = "from 3 size 2" if is_compact_3l else "from 4 size 2"
+            active_zones_l = [
+                {**z, "x_rule": [_table_x_3l]} if z.get("id") == "table" else z
+                for z in _base_z_l
+            ]
+        elif living_combo == "sofa_tv":
+            active_zones_l = LIVING_ZONES_SOFA_TV_3D
+        else:
+            active_zones_l = LIVING_ZONES_3D
+
+        reg_candidates_l: List[List[dict]] = []
+        for zone in active_zones_l:
+            options: List[dict] = []
+            for xr in zone["x_rule"]:
+                for yr in zone["y_rule"]:
+                    for zr in zone.get("z_rule", ["full"]):
+                        res = resolve_zone_position_3d(zone, W, H, D, xr, yr, zr)
+                        w, h, d = res["w"], res["h"], res["d"]
+                        for mid in zone["modules"]:
+                            m = MODULES_3D[mid]
+                            if _module_fits(m, w, h, d):
+                                options.append({
+                                    "module_id": mid,
+                                    "x_off": res["x_off"], "y_off": res["y_off"],
+                                    "z_off": res["z_off"],
+                                    "w": w, "h": h, "d": d,
+                                })
+            rng.shuffle(options)
+            reg_candidates_l.append(options)
+
+        def solve_gaps_l() -> bool:
+            gaps = _gap_columns_3d(placed, W, H)
+            gap_candidates = []
+            for col, row in gaps:
+                opts = [{"module_id": mid, "x_off": float(col), "y_off": float(row),
+                         "z_off": 0.0, "w": 1, "h": 1, "d": D}
+                        for mid in FILLER_IDS_3D]
+                rng.shuffle(opts)
+                gap_candidates.append(opts)
+            n_before = len(placed)
+
+            def bt_gap_l(i: int) -> bool:
+                if i == len(gap_candidates):
+                    return check_circuit_3d(placed)
+                for opt in gap_candidates[i]:
+                    placed.append(opt)
+                    if check_adjacency_3d(placed):
+                        if bt_gap_l(i + 1):
+                            return True
+                    placed.pop()
+                return False
+
+            ok = bt_gap_l(0)
+            if not ok:
+                del placed[n_before:]
+            return ok
+
+        def bt_l(i: int) -> bool:
+            if i == len(reg_candidates_l):
+                return solve_gaps_l()
+            for opt in reg_candidates_l[i]:
+                placed.append(opt)
+                if check_adjacency_3d(placed):
+                    if bt_l(i + 1):
+                        return True
+                placed.pop()
+            return False
+
+        return placed if bt_l(0) else None
 
     if corridor in ("corridor_right", "corridor_left"):
         inner_W  = W - corridor_w

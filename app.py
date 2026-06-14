@@ -27,9 +27,9 @@ def _module_library_png(section: str, mtime: float, drawing_mtime: float) -> byt
 
 
 @st.cache_data
-def _module_library_3d_png(mtime: float) -> bytes:
+def _module_library_3d_png(section: str, mtime: float) -> bytes:
     import matplotlib.pyplot as plt
-    fig = plot_module_library_3d()
+    fig = plot_module_library_3d(section)
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=80, bbox_inches="tight")
     plt.close(fig)
@@ -471,10 +471,25 @@ with st.sidebar:
             "Corridor Left": "corridor_left",
             "Corridor Right": "corridor_right",
         }[corridor_choice]
-        corridor_w = 2
+        if corridor != "none":
+            _cw_choice = st.radio(
+                "Corridor width",
+                options=["Narrow (2)", "Wide (4)"],
+                horizontal=True,
+            )
+            corridor_w = 4 if "Wide" in _cw_choice else 2
+        else:
+            corridor_w = 2
     else:
-        corridor   = "none"
-        corridor_w = 2
+        # Kitchen always has corridor on the right — only compact vs spacious
+        _cw_choice_k = st.radio(
+            "Corridor",
+            options=["Compact (2)", "Spacious (4)"],
+            horizontal=True,
+            key="kitchen_corridor_w",
+        )
+        corridor   = "corridor_right"
+        corridor_w = 4 if "Spacious" in _cw_choice_k else 2
 
     st.divider()
 
@@ -534,8 +549,9 @@ with st.sidebar:
         )
         roof_style = roof_choice.lower()
     elif section_type == "Kitchen":
-        W = 6
-        st.caption("Section: **6 × H**")
+        _inner_w_k = 4  # 3 cabinet cols + 1 filler col; corridor always on right
+        W = _inner_w_k + corridor_w  # min 6 (compact) or 8 (spacious)
+        st.caption(f"Section: **{W} × H**  ({_inner_w_k} kitchen + {corridor_w} corridor)")
         roof_choice = st.radio(
             "Roof Style",
             options=["Any", "Plain", "Divided", "Pitched"],
@@ -662,7 +678,7 @@ with section_col:
                 "Red lines = geometry.  Green dots = ports."
             )
             _m3d_mtime = os.path.getmtime(_MODULES3D_PATH)
-            st.image(_module_library_3d_png(_m3d_mtime), use_container_width=True)
+            st.image(_module_library_3d_png(section_type, _m3d_mtime), use_container_width=True)
         elif section_type in _SECTION_ZONES:
             st.caption(
                 "All module variants at unit scale (1 cell = 1 unit).  "
@@ -745,9 +761,9 @@ with section_col:
         elif section_type == "Kitchen":
             with st.spinner("Solving…"):
                 if mode == "2D":
-                    result = solve(W, H, seed, "none", 2, roof_style=roof_style, section="kitchen")
+                    result = solve(W, H, seed, corridor, corridor_w, roof_style=roof_style, section="kitchen")
                 else:
-                    result = solve3d(W, H, D, seed, "none", 2, roof_style=roof_style, section="kitchen")
+                    result = solve3d(W, H, D, seed, corridor, corridor_w, roof_style=roof_style, section="kitchen")
             if result is None:
                 st.error("No valid section found — try a different seed or height.")
             else:
@@ -781,14 +797,15 @@ with section_col:
                     st.write(f"Closed circuit:  {'✓ pass' if ok_cir else '✗ fail'}")
 
         elif section_type == "Living":
-            if mode == "3D":
-                st.info("3D mode for Living is not yet available — switch to 2D.")
-            else:
-                with st.spinner("Solving…"):
+            with st.spinner("Solving…"):
+                if mode == "2D":
                     result = solve(W, H, seed, corridor, corridor_w, living_style, roof_style, section="living")
-                if result is None:
-                    st.error("No valid section found — try a different seed or height.")
                 else:
+                    result = solve3d(W, H, D, seed, corridor, corridor_w, living_style, roof_style, section="living")
+            if result is None:
+                st.error("No valid section found — try a different seed or height.")
+            else:
+                if mode == "2D":
                     st.pyplot(plot_section(result, W, H, roof_style=roof_style))
                     with st.expander("Placement details"):
                         for p in result:
@@ -802,6 +819,8 @@ with section_col:
                         ok_cir = check_circuit(result)
                         st.write(f"Adjacency check: {'✓ pass' if ok_adj else '✗ fail'}")
                         st.write(f"Closed circuit:  {'✓ pass' if ok_cir else '✗ fail'}")
+                else:
+                    st.pyplot(plot_section_3d(result, W, H, D))
 
         else:
             st.pyplot(plot_grid_only(W, H, section_type, corridor, corridor_w))

@@ -825,6 +825,37 @@ MODULES_3D.update({
         "whd_ports_fn":    _corr_l_short_ports,
     },
 
+    # ── Sofa (Living) ─────────────────────────────────────────────────────────
+
+    "sofa_h3_v1_3d": {
+        "id": "sofa_h3_v1_3d", "w": 3, "h": 3, "d": 3,
+        "zone": "sofa",
+        "scalable_d": True,
+        "description": "Sofa h=3 w=3, lifted from 2D geometry — spacious.",
+        "tags": ["lifted", "sofa", "h3", "living", "spacious"],
+        "segments": _lift2d([
+            [(0.5, 3.0), (0.5, 2.5)],
+            [(0.5, 2.5), (1.0, 2.5), (1.0, 1.5), (2.5, 1.5),
+             (2.5, 0.5), (0.5, 0.5), (0.5, 2.5)],
+            [(2.5, 0.5), (3.0, 0.5)],
+        ], ex={(0.5, 3.0), (3.0, 0.5)}),
+        "ports": _ports_lift({"top": [(0.5, 3.0)], "bottom": [], "left": [], "right": [(3.0, 0.5)]}),
+    },
+
+    "sofa_h3_v2_3d": {
+        "id": "sofa_h3_v2_3d", "w": 2, "h": 3, "d": 3,
+        "zone": "sofa",
+        "scalable_d": True,
+        "description": "Sofa h=3 w=2, compact version for smaller living sections.",
+        "tags": ["lifted", "sofa", "h3", "living", "compact"],
+        "segments": _lift2d([
+            [(0.5, 3.0), (0.5, 2.5)],
+            [(0.5, 2.5), (0.5, 0.5), (1.5, 0.5), (1.5, 2.5), (0.5, 2.5)],
+            [(1.5, 0.5), (2.0, 0.5)],
+        ], ex={(0.5, 3.0), (2.0, 0.5)}),
+        "ports": _ports_lift({"top": [(0.5, 3.0)], "bottom": [], "left": [], "right": [(2.0, 0.5)]}),
+    },
+
 })
 
 
@@ -1230,14 +1261,30 @@ def _kitchen_lower_segs(w, h, d):
         [(1.5, 0.5), (3.0, 0.5)],
     ], d=d, ex={(0.5, 3.0), (3.0, 0.5)})
 
+def _kitchen_lower_wide_segs(w, h, d):
+    return _lift2d([
+        [(0.5, 3.0), (0.5, 2.5)],
+        [(0.5, 2.5), (2.5, 2.5), (2.5, 0.5), (2.0, 0.5), (0.5, 0.5), (0.5, 2.5)],
+        [(2.0, 0.5), (3.0, 0.5)],
+    ], d=d, ex={(0.5, 3.0), (3.0, 0.5)})
+
 def _kitchen_lower_ports(w, h, d):
     return _ports_lift({"top": [(0.5, 3.0)], "right": [(3.0, 0.5)], "bottom": [], "left": []}, d=d)
 
 def _kitchen_upper_segs(w, h, d):
+    # narrow body: right edge at w-0.5 (matches 2D narrow variant)
     return _lift2d([
         [(0.5, 0.0), (0.5, 0.5)],
         [(0.5, h - 0.5), (0.5, float(h))],
         [(0.5, 0.5), (w - 0.5, 0.5), (w - 0.5, h - 0.5), (0.5, h - 0.5), (0.5, 0.5)],
+    ], d=d, ex={(0.5, 0.0), (0.5, float(h))})
+
+def _kitchen_upper_wide_segs(w, h, d):
+    # wide body: right edge at w (matches 2D wide variant)
+    return _lift2d([
+        [(0.5, 0.0), (0.5, 0.5)],
+        [(0.5, h - 0.5), (0.5, float(h))],
+        [(0.5, 0.5), (float(w), 0.5), (float(w), h - 0.5), (0.5, h - 0.5), (0.5, 0.5)],
     ], d=d, ex={(0.5, 0.0), (0.5, float(h))})
 
 def _kitchen_upper_ports(w, h, d):
@@ -1257,8 +1304,8 @@ MODULES_3D.update({
         "id": "kitchen_lower_w3_h4_v2_3d", "w": 3, "h": 3, "d": 3,
         "zone": "lower_cabinet",
         "source_2d_id": "kitchen_lower_w3_h4_v2",
-        "description": "Kitchen lower cabinet, native 3D lifted from 2D geometry.",
-        "tags": ["lifted", "kitchen", "lower_cabinet"],
+        "description": "Kitchen lower cabinet 3D — narrow body (right edge at x=2.0).",
+        "tags": ["kitchen", "lower_cabinet"],
         "segments": _lift2d([
             [(0.5, 3.0), (0.5, 2.5)],
             [(0.5, 2.5), (2.0, 2.5), (2.0, 0.5), (1.5, 0.5), (0.5, 0.5), (0.5, 2.5)],
@@ -1268,18 +1315,95 @@ MODULES_3D.update({
         "whd_segments_fn": _kitchen_lower_segs,
         "whd_ports_fn":    _kitchen_lower_ports,
     },
+    "kitchen_lower_w3_h4_v3_3d": {
+        "id": "kitchen_lower_w3_h4_v3_3d", "w": 3, "h": 3, "d": 3,
+        "zone": "lower_cabinet",
+        "source_2d_id": "kitchen_lower_w3_h4_v3",
+        "description": "Kitchen lower cabinet 3D — wide body (right edge at x=2.5).",
+        "tags": ["kitchen", "lower_cabinet", "wide"],
+        "segments": _lift2d([
+            [(0.5, 3.0), (0.5, 2.5)],
+            [(0.5, 2.5), (2.5, 2.5), (2.5, 0.5), (2.0, 0.5), (0.5, 0.5), (0.5, 2.5)],
+            [(2.0, 0.5), (3.0, 0.5)],
+        ]),
+        "ports": _ports_lift({"top": [(0.5, 3.0)], "right": [(3.0, 0.5)], "bottom": [], "left": []}),
+        "whd_segments_fn": _kitchen_lower_wide_segs,
+        "whd_ports_fn":    _kitchen_lower_ports,
+    },
 
+    "kitchen_upper_w2_h1_3d": {
+        "id": "kitchen_upper_w2_h1_3d", "w": 2, "h": 1, "d": 3,
+        "zone": "upper_cabinet", "source_2d_id": "kitchen_upper_w2_h1",
+        "description": "Kitchen upper cabinet h=1 — shelf bracket, 3D.",
+        "tags": ["kitchen", "upper_cabinet", "h1"],
+        "segments": [], "ports": {face: [] for face in FACES_3D},
+        "whd_segments_fn": _kitchen_upper_segs, "whd_ports_fn": _kitchen_upper_ports,
+    },
+    "kitchen_upper_w2_h2_3d": {
+        "id": "kitchen_upper_w2_h2_3d", "w": 2, "h": 2, "d": 3,
+        "zone": "upper_cabinet", "source_2d_id": "kitchen_upper_w2_h2",
+        "description": "Kitchen upper cabinet h=2, 3D.",
+        "tags": ["kitchen", "upper_cabinet", "h2"],
+        "segments": [], "ports": {face: [] for face in FACES_3D},
+        "whd_segments_fn": _kitchen_upper_segs, "whd_ports_fn": _kitchen_upper_ports,
+    },
+    "kitchen_upper_w2_h3_3d": {
+        "id": "kitchen_upper_w2_h3_3d", "w": 2, "h": 3, "d": 3,
+        "zone": "upper_cabinet", "source_2d_id": "kitchen_upper_w2_h3",
+        "description": "Kitchen upper cabinet h=3, 3D.",
+        "tags": ["kitchen", "upper_cabinet", "h3"],
+        "segments": [], "ports": {face: [] for face in FACES_3D},
+        "whd_segments_fn": _kitchen_upper_segs, "whd_ports_fn": _kitchen_upper_ports,
+    },
+    "kitchen_upper_w2_h4_3d": {
+        "id": "kitchen_upper_w2_h4_3d", "w": 2, "h": 4, "d": 3,
+        "zone": "upper_cabinet", "source_2d_id": "kitchen_upper_w2_h4",
+        "description": "Kitchen upper cabinet h=4, 3D.",
+        "tags": ["kitchen", "upper_cabinet", "h4"],
+        "segments": [], "ports": {face: [] for face in FACES_3D},
+        "whd_segments_fn": _kitchen_upper_segs, "whd_ports_fn": _kitchen_upper_ports,
+    },
+    "kitchen_upper_w2_h1_wide_3d": {
+        "id": "kitchen_upper_w2_h1_wide_3d", "w": 2, "h": 1, "d": 3,
+        "zone": "upper_cabinet", "source_2d_id": "kitchen_upper_w2_h1_wide",
+        "description": "Kitchen upper cabinet h=1 wide body, 3D.",
+        "tags": ["kitchen", "upper_cabinet", "h1", "wide"],
+        "segments": [], "ports": {face: [] for face in FACES_3D},
+        "whd_segments_fn": _kitchen_upper_wide_segs, "whd_ports_fn": _kitchen_upper_ports,
+    },
+    "kitchen_upper_w2_h2_wide_3d": {
+        "id": "kitchen_upper_w2_h2_wide_3d", "w": 2, "h": 2, "d": 3,
+        "zone": "upper_cabinet", "source_2d_id": "kitchen_upper_w2_h2_wide",
+        "description": "Kitchen upper cabinet h=2 wide body, 3D.",
+        "tags": ["kitchen", "upper_cabinet", "h2", "wide"],
+        "segments": [], "ports": {face: [] for face in FACES_3D},
+        "whd_segments_fn": _kitchen_upper_wide_segs, "whd_ports_fn": _kitchen_upper_ports,
+    },
+    "kitchen_upper_w2_h3_wide_3d": {
+        "id": "kitchen_upper_w2_h3_wide_3d", "w": 2, "h": 3, "d": 3,
+        "zone": "upper_cabinet", "source_2d_id": "kitchen_upper_w2_h3_wide",
+        "description": "Kitchen upper cabinet h=3 wide body, 3D.",
+        "tags": ["kitchen", "upper_cabinet", "h3", "wide"],
+        "segments": [], "ports": {face: [] for face in FACES_3D},
+        "whd_segments_fn": _kitchen_upper_wide_segs, "whd_ports_fn": _kitchen_upper_ports,
+    },
+    "kitchen_upper_w2_h4_wide_3d": {
+        "id": "kitchen_upper_w2_h4_wide_3d", "w": 2, "h": 4, "d": 3,
+        "zone": "upper_cabinet", "source_2d_id": "kitchen_upper_w2_h4_wide",
+        "description": "Kitchen upper cabinet h=4 wide body, 3D.",
+        "tags": ["kitchen", "upper_cabinet", "h4", "wide"],
+        "segments": [], "ports": {face: [] for face in FACES_3D},
+        "whd_segments_fn": _kitchen_upper_wide_segs, "whd_ports_fn": _kitchen_upper_ports,
+    },
+
+    # legacy alias kept for any remaining references
     "kitchen_upper_w2_3d": {
         "id": "kitchen_upper_w2_3d", "w": 2, "h": 3, "d": 3,
-        "zone": "upper_cabinet",
-        "scalable_h": True,
-        "source_2d_id": "kitchen_upper_w2",
-        "description": "Kitchen upper cabinet, h-scalable, lifted from 2D geometry.",
-        "tags": ["lifted", "kitchen", "upper_cabinet"],
-        "segments": [],
-        "ports": {face: [] for face in FACES_3D},
-        "whd_segments_fn": _kitchen_upper_segs,
-        "whd_ports_fn":    _kitchen_upper_ports,
+        "zone": "upper_cabinet", "source_2d_id": "kitchen_upper_w2_h3",
+        "description": "Kitchen upper cabinet h=3, 3D (legacy).",
+        "tags": ["kitchen", "upper_cabinet", "h3"],
+        "segments": [], "ports": {face: [] for face in FACES_3D},
+        "whd_segments_fn": _kitchen_upper_segs, "whd_ports_fn": _kitchen_upper_ports,
     },
 
     "kitchen_wall_3d": {
@@ -1302,13 +1426,19 @@ MODULES_3D.update({
 # Mirrors 2D KITCHEN_ZONES / KITCHEN_ZONES_SHELF_H2 / KITCHEN_ZONES_SHELF_H3.
 # No corridor variants needed — kitchen never has a corridor.
 
-_KZ3_LOWER       = {"id": "lower_cabinet", "x_rule": ["first 3"], "y_rule": ["first 3"],         "z_rule": ["full"], "modules": ["kitchen_lower_w3_h4_v2_3d"]}
-_KZ3_UPPER_H3    = {"id": "upper_cabinet", "x_rule": ["first 2"], "y_rule": ["from 3 size 3"],   "z_rule": ["full"], "modules": ["kitchen_upper_w2_3d"]}
-_KZ3_UPPER_TO_H2 = {"id": "upper_cabinet", "x_rule": ["first 2"], "y_rule": ["from 3 to last 2"],"z_rule": ["full"], "modules": ["kitchen_upper_w2_3d"]}
-_KZ3_UPPER_TO_H3 = {"id": "upper_cabinet", "x_rule": ["first 2"], "y_rule": ["from 3 to last 3"],"z_rule": ["full"], "modules": ["kitchen_upper_w2_3d"]}
-_KZ3_WALL_H1     = {"id": "kitchen_wall",  "x_rule": ["last 2"],  "y_rule": ["skip last 1"],     "z_rule": ["full"], "modules": ["kitchen_wall_3d"]}
-_KZ3_WALL_H2     = {"id": "kitchen_wall",  "x_rule": ["last 2"],  "y_rule": ["skip last 2"],     "z_rule": ["full"], "modules": ["kitchen_wall_3d"]}
-_KZ3_WALL_H3     = {"id": "kitchen_wall",  "x_rule": ["last 2"],  "y_rule": ["skip last 3"],     "z_rule": ["full"], "modules": ["kitchen_wall_3d"]}
+_KZ3_LOWER_NARROW = {"id": "lower_cabinet", "x_rule": ["first 3"], "y_rule": ["first 3"], "z_rule": ["full"], "modules": ["kitchen_lower_w3_h4_v2_3d"]}
+_KZ3_LOWER_WIDE   = {"id": "lower_cabinet", "x_rule": ["first 3"], "y_rule": ["first 3"], "z_rule": ["full"], "modules": ["kitchen_lower_w3_h4_v3_3d"]}
+_KZ3_LOWER        = _KZ3_LOWER_NARROW  # default; solver3d patches per _wide_k3d
+
+_UPPER_3D_ALL = ["kitchen_upper_w2_h1_3d", "kitchen_upper_w2_h2_3d",
+                 "kitchen_upper_w2_h3_3d", "kitchen_upper_w2_h4_3d"]
+
+_KZ3_UPPER_H3    = {"id": "upper_cabinet", "x_rule": ["first 2"], "y_rule": ["from 3 size 3"],   "z_rule": ["full"], "modules": _UPPER_3D_ALL}
+_KZ3_UPPER_TO_H2 = {"id": "upper_cabinet", "x_rule": ["first 2"], "y_rule": ["from 3 to last 2"],"z_rule": ["full"], "modules": _UPPER_3D_ALL}
+_KZ3_UPPER_TO_H3 = {"id": "upper_cabinet", "x_rule": ["first 2"], "y_rule": ["from 3 to last 3"],"z_rule": ["full"], "modules": _UPPER_3D_ALL}
+_KZ3_WALL_H1     = {"id": "kitchen_wall",  "x_rule": ["last 2"],  "y_rule": ["skip last 1"],     "z_rule": ["full"], "modules": ["corridor_right_3d_short"]}
+_KZ3_WALL_H2     = {"id": "kitchen_wall",  "x_rule": ["last 2"],  "y_rule": ["skip last 2"],     "z_rule": ["full"], "modules": ["corridor_right_3d_short"]}
+_KZ3_WALL_H3     = {"id": "kitchen_wall",  "x_rule": ["last 2"],  "y_rule": ["skip last 3"],     "z_rule": ["full"], "modules": ["corridor_right_3d_short"]}
 
 _KITCHEN_SHELF_H2_3D = [
     "shelf_h2_v1", "shelf_h2_v2", "shelf_h2_v3",
@@ -1336,3 +1466,64 @@ KITCHEN_ZONES_SHELF_H3_3D = [
     _KZ3_UPPER_TO_H3,
     _KZ3_WALL_H3,
 ]
+
+# Inner zones only (no shelf, no kitchen_wall) — both pre-placed by solver3d.
+# Upper cabinet y_rule "from 3 to last 0" fills whatever height remains after the shelf.
+KITCHEN_ZONES_INNER_3D = [
+    _KZ3_LOWER,
+    {"id": "upper_cabinet", "x_rule": ["first 2"], "y_rule": ["from 3 to last 0"],
+     "z_rule": ["full"], "modules": _UPPER_3D_ALL},
+]
+
+
+# ── Living 3D zone configurations ─────────────────────────────────────────────
+
+_LIVING_SHELF_3D = [
+    "shelf_h1_v1",
+    "shelf_h2_v1", "shelf_h2_v2", "shelf_h2_v3",
+    "shelf_pitched_sym_v1", "shelf_pitched_sym_v2",
+    "shelf_h3_v1", "shelf_h3_v2",
+]
+
+LIVING_ZONES_3D = [
+    {
+        "id":      "sofa",
+        "x_rule":  ["first 3", "first 2"],
+        "y_rule":  ["first 3", "first 2"],
+        "z_rule":  ["full"],
+        "modules": ["sofa_h3_v1_3d", "sofa_h3_v2_3d"],
+    },
+    {
+        "id":      "table",
+        "x_rule":  ["middle 2"],
+        "y_rule":  ["first 2"],
+        "z_rule":  ["full"],
+        "modules": ["table_h2_v1", "table_h2_v3", "table_h2_v5", "table_h2_v6"],
+    },
+    {
+        "id":      "tv_table",
+        "x_rule":  ["last 2"],
+        "y_rule":  ["first 2"],
+        "z_rule":  ["full"],
+        "modules": ["tv_table_h2_v1", "tv_table_h2_v2", "tv_table_h2_v3"],
+    },
+    {
+        "id":      "shelf",
+        "x_rule":  ["full"],
+        "y_rule":  ["last 1", "last 2", "last 3"],
+        "z_rule":  ["full"],
+        "modules": _LIVING_SHELF_3D,
+    },
+]
+
+_LZ3_SOFA  = LIVING_ZONES_3D[0]
+_LZ3_TABLE = {"id": "table", "x_rule": ["from 3 size 2"], "y_rule": ["first 2"],
+               "z_rule": ["full"], "modules": ["table_h2_v1", "table_h2_v3", "table_h2_v5", "table_h2_v6"]}
+_LZ3_TV    = LIVING_ZONES_3D[2]
+_LZ3_SHELF = LIVING_ZONES_3D[3]
+
+# sofa + table: table at "from 3 size 2" (compact default; solver patches to "from 4 size 2" for spacious)
+LIVING_ZONES_SOFA_TABLE_3D = [_LZ3_SOFA, _LZ3_TABLE, _LZ3_SHELF]
+
+# sofa + tv_table: tv_table has no right port — works at last 2
+LIVING_ZONES_SOFA_TV_3D    = [_LZ3_SOFA, _LZ3_TV,    _LZ3_SHELF]

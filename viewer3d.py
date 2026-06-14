@@ -124,11 +124,21 @@ def plot_section_3d(placed: List[dict], W: int, H: int, D: int,
 
 # ── plot_module_library_3d ────────────────────────────────────────────────────
 
-def plot_module_library_3d() -> plt.Figure:
+_SECTION_ZONES_3D = {
+    "Dining":  {"chair_left", "chair_right", "table", "shelf", "corridor_left", "corridor_right"},
+    "Kitchen": {"lower_cabinet", "upper_cabinet", "kitchen_wall", "shelf"},
+    "Living":  {"sofa", "table", "tv_table", "shelf"},
+}
+
+
+def plot_module_library_3d(section: str = "") -> plt.Figure:
+    allowed_zones = _SECTION_ZONES_3D.get(section, None)
     mods = sorted(
         (m for m in MODULES_3D.values()
          if m["zone"] != "filler"
-         and "conn_" not in m["id"]),
+         and "conn_" not in m["id"]
+         and (allowed_zones is None or m["zone"] in allowed_zones)
+         and "legacy" not in m.get("description", "")),
         key=lambda m: (
             ZONE_ORDER.index(m["zone"]) if m["zone"] in ZONE_ORDER else 99,
             m["h"],
