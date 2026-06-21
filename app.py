@@ -3,9 +3,10 @@ import os
 import streamlit as st
 
 from solver import solve, check_adjacency, check_circuit
-from drawing import plot_section, plot_module_library, plot_grid_only, _SECTION_ZONES
+from drawing import plot_section, plot_module_library, plot_plan_view, _SECTION_ZONES
+from dwelling import solve_dwelling_2d, solve_dwelling_3d
 from solver3d import solve3d, check_adjacency_3d, check_circuit_3d
-from viewer3d import plot_section_3d, plot_module_library_3d, plot_slice_2d, _draw_module_3d
+from viewer3d import plot_section_3d, plot_module_library_3d, plot_slice_2d, plot_dwelling_3d, _draw_module_3d
 from modules3d import MODULES_3D
 import llm
 from llm import chat_modify_dining, onboarding_to_spec
@@ -43,6 +44,10 @@ def _furniture_thumbnail_png(module_id: str, mtime: float) -> bytes:
     w, h, d = mod["w"], mod["h"], 3
     fig = plt.figure(figsize=(1.2, 1.2))
     ax = fig.add_subplot(111, projection="3d")
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    for _pane in (ax.xaxis.pane, ax.yaxis.pane, ax.zaxis.pane):
+        _pane.fill = False
     _draw_module_3d(ax, mod, 0.0, 0.0, 0.0, w, h, d,
                     show_voxel=True, show_ports=False, zone_alpha=0.05)
     ax.set_xlim(0, w); ax.set_ylim(0, d); ax.set_zlim(0, h)
@@ -90,7 +95,7 @@ st.set_page_config(page_title="Nomadic Engine", layout="wide")
 
 # ── Session state ─────────────────────────────────────────────────────────────
 if "onboarding_complete" not in st.session_state:
-    st.session_state.onboarding_complete = True  # DEV: skip onboarding
+    st.session_state.onboarding_complete = False
 if "onboarding_step" not in st.session_state:
     st.session_state.onboarding_step = 0
 if "onboarding_answers" not in st.session_state:
@@ -138,8 +143,6 @@ def _stabilize_furniture_tags(result: list, current_tags: list) -> list:
     for p in result:
         mid = p["module_id"]
         if not has_chair and ("chair_left" in mid or "chair_right" in mid):
-            # Use placed h value directly — covers native 3D IDs (chair_left_3d_v1 etc.)
-            # as well as pattern-named lifted modules (_h2_, _h3_).
             h = p.get("h", 0)
             if h == 2:
                 new_tags.append("low_chairs")
@@ -416,7 +419,7 @@ st.title("Nomadic Engine")
 
 section_type = st.radio(
     "",
-    options=["Dining", "Kitchen", "Living", "Bed"],
+    options=["Dwelling", "Dining", "Kitchen", "Living", "Bed", "Bath"],
     horizontal=True,
     key="section_type",
     label_visibility="collapsed",
@@ -426,16 +429,26 @@ st.divider()
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    mode = st.radio(
-        "Mode",
-        options=["2D", "3D"],
-        index=["2D", "3D"].index(st.session_state._mode),
-        horizontal=True,
-        help="2D = section drawing.  3D = volumetric assembly with a depth axis.",
-    )
-    st.session_state._mode = mode
+    # Dwelling tab is always 3D — hide the toggle there.
+    _active_tab = st.session_state.get("section_type", "Dwelling")
+    if _active_tab != "Dwelling":
+        mode = st.radio(
+            "Mode",
+            options=["2D", "3D"],
+            index=["2D", "3D"].index(st.session_state._mode),
+            horizontal=True,
+            help="2D = section drawing.  3D = volumetric assembly with a depth axis.",
+        )
+        st.session_state._mode = mode
+    else:
+        mode = "3D"
+        st.session_state._mode = "3D"
     st.divider()
     st.header("Parameters")
+
+    # Safe defaults — overridden per section type; Dwelling manages its own corridor.
+    corridor   = "none"
+    corridor_w = 2
 
     if section_type == "Dining":
         _spec_corr   = st.session_state.dining_spec.get("corridor_side", "none")
@@ -459,7 +472,7 @@ with st.sidebar:
         corridor   = f"corridor_{_new_corr_side}" if _new_corr_side != "none" else "none"
         _raw_cw    = st.session_state.dining_spec.get("corridor_w", 2)
         corridor_w = 4 if int(_raw_cw) >= 3 else 2  # clamp to valid values
-    elif section_type != "Kitchen":
+    elif section_type in ("Living", "Bath"):
         corridor_choice = st.radio(
             "Corridor",
             options=["None", "Corridor Left", "Corridor Right"],
@@ -480,7 +493,17 @@ with st.sidebar:
             corridor_w = 4 if "Wide" in _cw_choice else 2
         else:
             corridor_w = 2
-    else:
+    elif section_type == "Bed":
+        # Bed always has corridor on the right — only compact vs spacious
+        _cw_choice_b = st.radio(
+            "Corridor",
+            options=["Compact (2)", "Spacious (4)"],
+            horizontal=True,
+            key="bed_corridor_w",
+        )
+        corridor   = "corridor_right"
+        corridor_w = 4 if "Spacious" in _cw_choice_b else 2
+    elif section_type == "Kitchen":
         # Kitchen always has corridor on the right — only compact vs spacious
         _cw_choice_k = st.radio(
             "Corridor",
@@ -490,6 +513,7 @@ with st.sidebar:
         )
         corridor   = "corridor_right"
         corridor_w = 4 if "Spacious" in _cw_choice_k else 2
+    # Dwelling: corridor is configured inside its own section-params block below.
 
     st.divider()
 
@@ -525,21 +549,40 @@ with st.sidebar:
             + ")"
         )
     elif section_type == "Living":
+        living_combo_choice = st.radio(
+            "Layout",
+            options=["Full", "Sofa + TV"],
+            horizontal=True,
+            help="Full = sofa + table + TV unit.  Sofa+TV = sofa and TV unit only.",
+        )
+        living_combo = {"Full": "full", "Sofa + TV": "sofa_tv"}[living_combo_choice]
+
         living_choice = st.radio(
             "Section Style",
             options=["Compact", "Spacious"],
             horizontal=True,
-            help="Compact = flush sofa (W=7).  Spacious = wide coffee table with gap columns (W=9).",
+            help="Compact = tighter layout, no gap.  Spacious = 1 filler column between elements.",
         )
         living_style = "compact" if living_choice == "Compact" else "spacious"
-        corridor_w = 2 if living_style == "compact" else 4
-        _inner_w = 7 if living_style == "compact" else 9
-        W = _inner_w + (corridor_w if corridor != "none" else 0)
-        st.caption(
-            f"Section: **{W} × H**  ({_inner_w} living"
-            + (f" + {corridor_w} corridor" if corridor != "none" else "")
-            + ")"
-        )
+
+        # corridor_w is set by the corridor width radio above — never override it here
+        if living_combo == "full":
+            _inner_w = 7 if living_style == "compact" else 9
+            W = _inner_w + (corridor_w if corridor != "none" else 0)
+            st.caption(
+                f"Section: **{W} × H**  ({_inner_w} living"
+                + (f" + {corridor_w} corridor" if corridor != "none" else "")
+                + ")"
+            )
+        else:
+            # compact = 5 inner cols (0 gap), spacious = 6 inner cols (1 gap between sofa and element)
+            _inner_w = 5 if living_style == "compact" else 6
+            if corridor == "none":
+                W = _inner_w
+                st.caption(f"Section: **{W} × H**  ({_inner_w} inner)")
+            else:
+                W = _inner_w + corridor_w
+                st.caption(f"Section: **{W} × H**  ({_inner_w} inner + {corridor_w} corridor)")
 
         roof_choice = st.radio(
             "Roof Style",
@@ -564,14 +607,97 @@ with st.sidebar:
             value=False,
             help="Overlays a standing silhouette at the kitchen counter.",
         )
-    else:
-        _inner_w = 8  # Bed
-        W = _inner_w + (corridor_w if corridor != "none" else 0)
+    elif section_type == "Bath":
+        _inner_w_bath = 6
+        W = _inner_w_bath + (corridor_w if corridor != "none" else 0)
         st.caption(
-            f"Section: **{W} × H**  ({_inner_w} bed"
+            f"Section: **{W} × H**  ({_inner_w_bath} bath"
             + (f" + {corridor_w} corridor" if corridor != "none" else "")
             + ")"
         )
+        roof_choice = st.radio(
+            "Roof Style",
+            options=["Any", "Plain", "Divided", "Pitched"],
+            horizontal=True,
+            help="Plain = flat top bar.  Divided = internal shelves/dividers.  Pitched = lean-to or gable ridge.",
+        )
+        roof_style = roof_choice.lower()
+    elif section_type == "Dwelling":
+        # ── Dwelling assembler ────────────────────────────────────────────────
+        _dw_corr_choice = st.radio(
+            "Corridor Side",
+            options=["Right", "Left", "None"],
+            horizontal=True,
+            key="dw_corr_side",
+        )
+        _dw_corridor_side = {"Right": "right", "Left": "left", "None": "none"}[_dw_corr_choice]
+        _dw_cw_choice = st.radio(
+            "Corridor Width",
+            options=["Narrow (2)", "Wide (4)"],
+            horizontal=True,
+            key="dw_cw",
+        )
+        _dw_corridor_w = 4 if "Wide" in _dw_cw_choice else 2
+
+        _dw_W = int(st.number_input(
+            "Section Width W (shared)",
+            min_value=4, max_value=14, value=9, step=1, key="dw_W",
+            help="Total width including corridor — shared across all sections.",
+        ))
+        _dw_H = int(st.number_input(
+            "Section Height H (shared)",
+            min_value=7, max_value=11, value=7, step=1, key="dw_H",
+        ))
+
+        if "dwelling_functions" not in st.session_state:
+            st.session_state.dwelling_functions = [
+                {"type": "dining",  "d": 3, "seed": 46, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
+                {"type": "kitchen", "d": 3, "seed": 45, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
+                {"type": "living",  "d": 3, "seed": 44, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
+                {"type": "bed",     "d": 3, "seed": 42, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
+                {"type": "bath",    "d": 3, "seed": 100, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
+            ]
+
+        st.markdown("**Sections** (front → back)")
+        _SECTION_TYPES = ["dining", "kitchen", "living", "bed", "bath"]
+        _fns = st.session_state.dwelling_functions
+        _to_remove = None
+        for _i, _fn in enumerate(_fns):
+            _c1, _c2, _c3, _c4 = st.columns([2, 1, 1, 0.5])
+            with _c1:
+                _fn["type"] = st.selectbox(
+                    "type", _SECTION_TYPES,
+                    index=_SECTION_TYPES.index(_fn["type"]) if _fn["type"] in _SECTION_TYPES else 0,
+                    key=f"dw_type_{_i}", label_visibility="collapsed",
+                )
+            with _c2:
+                _fn["d"] = int(st.number_input(
+                    "d", min_value=1, max_value=12, value=_fn["d"],
+                    key=f"dw_d_{_i}", label_visibility="collapsed",
+                ))
+            with _c3:
+                _fn["seed"] = int(st.number_input(
+                    "seed", min_value=0, max_value=999999, value=_fn["seed"],
+                    key=f"dw_seed_{_i}", label_visibility="collapsed",
+                ))
+            with _c4:
+                if st.button("✕", key=f"dw_rm_{_i}"):
+                    _to_remove = _i
+        if _to_remove is not None:
+            st.session_state.dwelling_functions.pop(_to_remove)
+            st.rerun()
+        if st.button("+ Add section", key="dw_add"):
+            st.session_state.dwelling_functions.append(
+                {"type": "dining", "d": 3, "seed": 42, "dining_style": "compact",
+                 "roof_style": "any", "living_combo": "full"}
+            )
+            st.rerun()
+        W = _dw_W  # so H/D block below has a value for W
+        roof_style = "any"
+    else:  # Bed
+        _inner_w_b = 4  # bed (4 cols) fills inner zone; corridor always on right
+        W = _inner_w_b + corridor_w
+        st.caption(f"Section: **{W} × H**  ({_inner_w_b} bed + {corridor_w} corridor)")
 
         roof_choice = st.radio(
             "Roof Style",
@@ -580,16 +706,21 @@ with st.sidebar:
             help="Plain = flat top bar.  Divided = internal shelves/dividers.  Pitched = lean-to or gable ridge.",
         )
         roof_style = roof_choice.lower()
-        living_style = "spacious"
 
     st.divider()
 
-    seed = int(st.slider("Seed", min_value=0, max_value=1_000_000, value=42, step=1))
+    if section_type != "Dwelling":
+        seed = int(st.slider("Seed", min_value=0, max_value=1_000_000, value=42, step=1))
+    else:
+        seed = 42  # per-section seeds set in the dwelling functions list
 
     if section_type == "Dining":
         # h and d are LLM-controlled for dining — read directly from session state
         H = max(7, min(11, st.session_state.dining_spec["h"]))
         D = max(2, min(9, st.session_state.dining_spec["d"])) if mode == "3D" else 1
+    elif section_type == "Dwelling":
+        H = _dw_H
+        D = 1
     else:
         if mode == "3D":
             H = int(st.number_input(
@@ -799,9 +930,11 @@ with section_col:
         elif section_type == "Living":
             with st.spinner("Solving…"):
                 if mode == "2D":
-                    result = solve(W, H, seed, corridor, corridor_w, living_style, roof_style, section="living")
+                    result = solve(W, H, seed, corridor, corridor_w, living_style, roof_style,
+                                   section="living", living_combo=living_combo)
                 else:
-                    result = solve3d(W, H, D, seed, corridor, corridor_w, living_style, roof_style, section="living")
+                    result = solve3d(W, H, D, seed, corridor, corridor_w, living_style, roof_style,
+                                     section="living", living_combo=living_combo)
             if result is None:
                 st.error("No valid section found — try a different seed or height.")
             else:
@@ -822,8 +955,101 @@ with section_col:
                 else:
                     st.pyplot(plot_section_3d(result, W, H, D))
 
-        else:
-            st.pyplot(plot_grid_only(W, H, section_type, corridor, corridor_w))
+        elif section_type == "Bath":
+            with st.spinner("Solving…"):
+                if mode == "2D":
+                    result = solve(W, H, seed, corridor, corridor_w, roof_style=roof_style, section="bath")
+                else:
+                    result = solve3d(W, H, D, seed, corridor, corridor_w, roof_style=roof_style, section="bath")
+            if result is None:
+                st.error("No valid section found — try a different seed or height.")
+            else:
+                if mode == "2D":
+                    st.pyplot(plot_section(result, W, H, roof_style=roof_style))
+                else:
+                    st.pyplot(plot_section_3d(result, W, H, D))
+                with st.expander("Placement details"):
+                    for p in result:
+                        off  = (f"({p['x_off']:.0f}, {p['y_off']:.0f})" if mode == "2D"
+                                else f"({p['x_off']:.0f}, {p['y_off']:.0f}, {p['z_off']:.0f})")
+                        size = (f"{p['w']}w × {p['h']}h" if mode == "2D"
+                                else f"{p['w']}w × {p['h']}h × {p['d']}d")
+                        st.write(f"**{p['module_id']}** — offset {off}  size {size}")
+                with st.expander("Circuit validation"):
+                    if mode == "2D":
+                        ok_adj = check_adjacency(result)
+                        ok_cir = check_circuit(result)
+                    else:
+                        ok_adj = check_adjacency_3d(result)
+                        ok_cir = check_circuit_3d(result)
+                    st.write(f"Adjacency check: {'✓ pass' if ok_adj else '✗ fail'}")
+                    st.write(f"Closed circuit:  {'✓ pass' if ok_cir else '✗ fail'}")
+
+        elif section_type == "Dwelling":
+            _dw_spec = {
+                "corridor_side": _dw_corridor_side,
+                "corridor_w":    _dw_corridor_w,
+                "W":             _dw_W,
+                "H":             _dw_H,
+                "functions":     st.session_state.dwelling_functions,
+            }
+            with st.spinner("Solving dwelling…"):
+                _dw_sections = solve_dwelling_3d(_dw_spec)
+
+            _dw_failed = [s for s in _dw_sections if s["placed"] is None]
+            if _dw_failed:
+                st.warning(
+                    f"{len(_dw_failed)} section(s) failed to solve: "
+                    + ", ".join(s['type'] for s in _dw_failed)
+                    + " — try adjusting W or seeds."
+                )
+            _col_3d, _col_plan = st.columns([3, 1])
+            with _col_3d:
+                st.pyplot(plot_dwelling_3d(
+                    _dw_sections,
+                    corridor_side=_dw_corridor_side,
+                    corridor_w=_dw_corridor_w,
+                ))
+            with _col_plan:
+                st.caption("Plan view")
+                st.pyplot(plot_plan_view(_dw_sections, _dw_corridor_side, _dw_corridor_w))
+
+        else:  # Bed
+            with st.spinner("Solving…"):
+                if mode == "2D":
+                    result = solve(W, H, seed, corridor, corridor_w, roof_style=roof_style, section="bed")
+                else:
+                    result = solve3d(W, H, D, seed, corridor, corridor_w, roof_style=roof_style, section="bed")
+            if result is None:
+                st.error("No valid section found — try a different seed or height.")
+            else:
+                if mode == "2D":
+                    st.pyplot(plot_section(result, W, H, roof_style=roof_style))
+                else:
+                    st.pyplot(plot_section_3d(result, W, H, D))
+                    with st.expander("2D slice at depth z", expanded=False):
+                        z_slice = st.slider(
+                            "z position (slice through depth)",
+                            min_value=0.5, max_value=float(D) - 0.5,
+                            value=0.5, step=1.0, key="bed_z_slice",
+                        )
+                        st.pyplot(plot_slice_2d(result, W, H, D, z=z_slice, roof_style=roof_style))
+                with st.expander("Placement details"):
+                    for p in result:
+                        off  = (f"({p['x_off']:.0f}, {p['y_off']:.0f})" if mode == "2D"
+                                else f"({p['x_off']:.0f}, {p['y_off']:.0f}, {p['z_off']:.0f})")
+                        size = (f"{p['w']}w × {p['h']}h" if mode == "2D"
+                                else f"{p['w']}w × {p['h']}h × {p['d']}d")
+                        st.write(f"**{p['module_id']}** — offset {off}  size {size}")
+                with st.expander("Circuit validation"):
+                    if mode == "2D":
+                        ok_adj = check_adjacency(result)
+                        ok_cir = check_circuit(result)
+                    else:
+                        ok_adj = check_adjacency_3d(result)
+                        ok_cir = check_circuit_3d(result)
+                    st.write(f"Adjacency check: {'✓ pass' if ok_adj else '✗ fail'}")
+                    st.write(f"Closed circuit:  {'✓ pass' if ok_cir else '✗ fail'}")
 
 # ── Picker column (right) ─────────────────────────────────────────────────────
 with picker_col:

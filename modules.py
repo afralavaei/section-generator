@@ -2,22 +2,32 @@ from typing import Dict
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 EPS = 1e-9
-LINE_COLOR  = "#cc2200"
-PORT_COLOR  = "#009900"
-GRID_COLOR  = "#aaaaaa"
+LINE_COLOR  = "#010605"   # dark teal-sage — clean, no red
+PORT_COLOR  = "#009900"   # 009900
+GRID_COLOR  = "#8a9088"   # mid sage-gray, visible against zone fills
 ZONE_COLORS = {
-    "chair_left":     "#fde9a2",
-    "chair_right":    "#fde9a2",
-    "sofa":           "#f5c6a0",
-    "tv_table":       "#b8a8d0",
-    "table":          "#d0e8d0",
-    "shelf":          "#ac2e2e",
-    "lower_cabinet":  "#c8a882",
-    "upper_cabinet":  "#a0785a",
-    "kitchen_wall":   "#8e96be",
-    "corridor_left":  "#b0c4de",
-    "corridor_right": "#b0c4de",
-    "filler":         "#e0e0e0",
+    "chair_left":     "#A6B4B4",  # Sage −20%
+    "chair_right":    "#A6B4B4",  # Sage −20%
+    "sofa":           "#D6D7CF",  # Stack −20%
+    "tv_table":       "#DADEBB",  # Morning Blue −20%
+    "table":          "#D9D9D9",  # Sour Dough −20% (warm surface)
+    "shelf":          "#A5B3A2",  # Sour Dough −30%
+    "lower_cabinet":  "#E3DDC8",  # Sour Dough −30%
+    "upper_cabinet":  "#C8BEB5",  # Sour Dough −40%
+    "kitchen_wall":   "#DBE3E5",  # Slate Gray −20%
+    "bed":            "#CCCCCC",  # Morning Blue deeper
+    "corridor_left":  "#DBE3E5",  # Cararra −25%
+    "corridor_right": "#DBE3E5",  # Cararra −25%
+    "filler":         "#FFFFFFFF",  # Cararra −15%
+}
+
+ZONE_ALPHAS = {
+    "filler":         0.08,
+    "table":          0.20,
+    "corridor_left":  0.20,
+    "corridor_right": 0.20,
+    "chair_left":     0.20,
+    "chair_right":    0.20,
 }
 
 # ── Module Library ────────────────────────────────────────────────────────────
@@ -1021,16 +1031,30 @@ MODULES: Dict[str, dict] = {
         "h_ports_fn":    lambda h: {"top": [(1.5, h)], "left": [(0.0, 0.5)], "bottom": [], "right": []},
     },
 
-    # ── Living right-wall post ────────────────────────────────────────────────
-    # 1-wide h-scalable closing element for sofa+table sub-combo (no corridor).
-    # Absorbs the table's right port at y=0.5 and connects to the shelf above.
-    "living_wall_right": {
-        "id": "living_wall_right", "w": 1, "h": 6, "zone": "corridor_right",
-        "h_scalable": True,
-        "description": "1-wide right wall post — closes table right port, top connects to shelf.",
-        "tags": ["living", "wall", "h-scalable", "right-side"],
-        "wh_segments_fn": lambda _, H: [[(0.0, 0.5), (0.5, 0.5), (0.5, H)]],
-        "wh_ports_fn":    lambda _, H: {"left": [(0.0, 0.5)], "top": [(0.5, H)], "bottom": [], "right": []},
+    # ── Bed modules ───────────────────────────────────────────────────────────
+    # w=4: fills the full inner zone so the right port connects directly to
+    # the corridor (no filler gap between bed and corridor).
+    "bed_v1": {
+        "id": "bed_v1", "w": 4, "h": 3, "zone": "bed",
+        "description": "Bed, 4 wide × 3 tall — narrow headboard stem and mattress body with right exit.",
+        "tags": ["bed", "h3", "narrow-headboard"],
+        "segments": [
+            [(0.5, 3.0), (0.5, 2.5)],
+            [(0.5, 2.5), (3.0, 2.5), (3.0, 0.5), (1.5, 0.5), (0.5, 0.5), (0.5, 2.5)],
+            [(1.5, 0.5), (4.0, 0.5)],
+        ],
+        "ports": {"top": [(0.5, 3.0)], "right": [(4.0, 0.5)], "bottom": [], "left": []},
+    },
+    "bed_v2": {
+        "id": "bed_v2", "w": 4, "h": 3, "zone": "bed",
+        "description": "Bed, 4 wide × 3 tall — wider headboard body with right exit.",
+        "tags": ["bed", "h3", "wide-headboard"],
+        "segments": [
+            [(0.5, 3.0), (0.5, 2.5)],
+            [(0.5, 2.5), (3.5, 2.5), (3.5, 0.5), (2.0, 0.5), (0.5, 0.5), (0.5, 2.5)],
+            [(2.0, 0.5), (4.0, 0.5)],
+        ],
+        "ports": {"top": [(0.5, 3.0)], "right": [(4.0, 0.5)], "bottom": [], "left": []},
     },
 
     # ── 1×1 filler tiles ──────────────────────────────────────────────────────
@@ -1054,6 +1078,20 @@ MODULES: Dict[str, dict] = {
         "tags": ["filler", "horizontal", "pass-through"],
         "segments": [[(0.0, 0.5), (1.0, 0.5)]],
         "ports": {"top": [], "bottom": [], "left": [(0.0, 0.5)], "right": [(1.0, 0.5)]},
+    },
+    "filler_corner_tr": {
+        "id": "filler_corner_tr", "w": 1, "h": 1, "zone": "filler",
+        "description": "Top-right corner filler — L-segment connecting vertical chain (top) to horizontal chain (right). No floor port.",
+        "tags": ["filler", "corner", "top-right"],
+        "segments": [[(0.5, 1.0), (0.5, 0.5), (1.0, 0.5)]],
+        "ports": {"top": [(0.5, 1.0)], "right": [(1.0, 0.5)], "bottom": [], "left": []},
+    },
+    "filler_corner_tl": {
+        "id": "filler_corner_tl", "w": 1, "h": 1, "zone": "filler",
+        "description": "Top-left corner filler — L-segment connecting vertical chain (top) to horizontal chain (left). No floor port.",
+        "tags": ["filler", "corner", "top-left"],
+        "segments": [[(0.5, 1.0), (0.5, 0.5), (0.0, 0.5)]],
+        "ports": {"top": [(0.5, 1.0)], "left": [(0.0, 0.5)], "bottom": [], "right": []},
     },
 }
 
@@ -1424,33 +1462,9 @@ LIVING_ZONES_INNER_CORR_LEFT = [
 ]
 
 # ── Living sub-combination zone configs ──────────────────────────────────────
-# sofa+table: table at middle, living_wall_right closes the right port.
-# sofa+tv:    tv_table already has no right port — no wall needed.
-# compact table x_rule ("from 3 size 2") is the default; solver patches to
-# "from 4 size 2" for spacious.  Corridor-right variants use "last 2".
 
 _LZ_SOFA  = LIVING_ZONES[0]
 _LZ_SHELF = LIVING_ZONES[3]
-_LZ_TABLE_MODS = LIVING_ZONES[1]["modules"]  # all h2 tables
-
-# sofa + table (no corridor) — wall_right absorbs table's right port
-LIVING_ZONES_SOFA_TABLE = [
-    _LZ_SOFA,
-    {"id": "table",           "x_rule": ["from 3 size 2"], "y_rule": ["first 2"], "modules": _LZ_TABLE_MODS},
-    {"id": "corridor_right",  "x_rule": ["last 1"],        "y_rule": ["full"],    "modules": ["living_wall_right"]},
-    _LZ_SHELF,
-]
-
-# sofa + table with corridor right — table at last 2, corridor absorbs right port
-LIVING_ZONES_SOFA_TABLE_CORR_RIGHT = [
-    _LZ_SOFA,
-    {"id": "table", "x_rule": ["last 2"], "y_rule": ["first 2"], "modules": _LZ_TABLE_MODS},
-    {**_LZ_SHELF, "modules": _SH_CORR_R},
-]
-LIVING_ZONES_SOFA_TABLE_INNER_CORR_RIGHT = [
-    _LZ_SOFA,
-    {"id": "table", "x_rule": ["last 2"], "y_rule": ["first 2"], "modules": _LZ_TABLE_MODS},
-]
 
 # sofa + tv_table (no corridor) — tv_table has no right port, works at last 2
 LIVING_ZONES_SOFA_TV = [
@@ -1473,9 +1487,15 @@ LIVING_ZONES_SOFA_TV_INNER_CORR_RIGHT = [
      "modules": _TV_CORR_R or ["tv_table_h2_v1"]},
 ]
 
+# ── Bed zone configuration ────────────────────────────────────────────────────
+# Shelf is always pre-placed by the solver; only the bed zone is solved here.
+BED_ZONES_INNER = [
+    {"id": "bed", "x_rule": ["first 4"], "y_rule": ["first 3"], "modules": ["bed_v1", "bed_v2"]},
+]
+
 # Used by drawing.py to order zones in the module library view
 ZONE_ORDER = [
     "chair_left", "chair_right", "sofa", "tv_table", "table",
-    "lower_cabinet", "upper_cabinet", "shelf",
+    "lower_cabinet", "upper_cabinet", "bed", "shelf",
     "corridor_left", "corridor_right", "filler",
 ]

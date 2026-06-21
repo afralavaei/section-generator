@@ -247,6 +247,37 @@ MODULES_3D: Dict[str, dict] = {
         },
     },
 
+    "filler_corner_tr_3d": {
+        "id": "filler_corner_tr_3d", "w": 1, "h": 1, "d": 3, "zone": "filler",
+        "description": "Top-right corner filler 3D — L-segment connecting vertical chain (top) to horizontal chain (right).",
+        "tags": ["native3d", "filler", "corner", "top-right"],
+        "scalable_d": True,
+        "segments": [
+            [(0.5, 1.0, 0.5), (0.5, 0.5, 0.5), (1.0, 0.5, 0.5)],
+            [(0.5, 1.0, 2.5), (0.5, 0.5, 2.5), (1.0, 0.5, 2.5)],
+        ],
+        "ports": {
+            "top":    [(0.5, 1.0, 0.5), (0.5, 1.0, 2.5)],
+            "right":  [(1.0, 0.5, 0.5), (1.0, 0.5, 2.5)],
+            "bottom": [], "left": [], "front": [], "back": [],
+        },
+    },
+    "filler_corner_tl_3d": {
+        "id": "filler_corner_tl_3d", "w": 1, "h": 1, "d": 3, "zone": "filler",
+        "description": "Top-left corner filler 3D — L-segment connecting vertical chain (top) to horizontal chain (left).",
+        "tags": ["native3d", "filler", "corner", "top-left"],
+        "scalable_d": True,
+        "segments": [
+            [(0.5, 1.0, 0.5), (0.5, 0.5, 0.5), (0.0, 0.5, 0.5)],
+            [(0.5, 1.0, 2.5), (0.5, 0.5, 2.5), (0.0, 0.5, 2.5)],
+        ],
+        "ports": {
+            "top":    [(0.5, 1.0, 0.5), (0.5, 1.0, 2.5)],
+            "left":   [(0.0, 0.5, 0.5), (0.0, 0.5, 2.5)],
+            "bottom": [], "right": [], "front": [], "back": [],
+        },
+    },
+
     # ── Lifted chair_left h=2 ─────────────────────────────────────────────────
 
     "chair_left_h2_v1": {
@@ -1249,7 +1280,8 @@ ZONES_3D_FULL_ROOF_CORR_LEFT_1CHAIR = [
     ZONES_3D_CORR_LEFT[2],   # chair_right at "last 2"
 ]
 
-FILLER_IDS_3D = ["filler_empty_3d", "filler_pass_v_3d", "filler_pass_h_3d"]
+FILLER_IDS_3D = ["filler_empty_3d", "filler_pass_v_3d", "filler_pass_h_3d",
+                  "filler_corner_tr_3d", "filler_corner_tl_3d"]
 
 
 # ── Kitchen 3D module helpers ─────────────────────────────────────────────────
@@ -1517,13 +1549,52 @@ LIVING_ZONES_3D = [
 ]
 
 _LZ3_SOFA  = LIVING_ZONES_3D[0]
-_LZ3_TABLE = {"id": "table", "x_rule": ["from 3 size 2"], "y_rule": ["first 2"],
-               "z_rule": ["full"], "modules": ["table_h2_v1", "table_h2_v3", "table_h2_v5", "table_h2_v6"]}
 _LZ3_TV    = LIVING_ZONES_3D[2]
 _LZ3_SHELF = LIVING_ZONES_3D[3]
 
-# sofa + table: table at "from 3 size 2" (compact default; solver patches to "from 4 size 2" for spacious)
-LIVING_ZONES_SOFA_TABLE_3D = [_LZ3_SOFA, _LZ3_TABLE, _LZ3_SHELF]
-
 # sofa + tv_table: tv_table has no right port — works at last 2
 LIVING_ZONES_SOFA_TV_3D    = [_LZ3_SOFA, _LZ3_TV,    _LZ3_SHELF]
+
+# ── Bed 3D modules ────────────────────────────────────────────────────────────
+
+def _bed_v1_segs_3d(w, h, d):
+    return _lift2d([
+        [(0.5, 3.0), (0.5, 2.5)],
+        [(0.5, 2.5), (3.0, 2.5), (3.0, 0.5), (1.5, 0.5), (0.5, 0.5), (0.5, 2.5)],
+        [(1.5, 0.5), (4.0, 0.5)],
+    ], d=d, ex={(0.5, 3.0), (4.0, 0.5)})
+
+def _bed_v2_segs_3d(w, h, d):
+    return _lift2d([
+        [(0.5, 3.0), (0.5, 2.5)],
+        [(0.5, 2.5), (3.5, 2.5), (3.5, 0.5), (2.0, 0.5), (0.5, 0.5), (0.5, 2.5)],
+        [(2.0, 0.5), (4.0, 0.5)],
+    ], d=d, ex={(0.5, 3.0), (4.0, 0.5)})
+
+def _bed_ports_3d(w, h, d):
+    return _ports_lift({"top": [(0.5, 3.0)], "right": [(4.0, 0.5)], "bottom": [], "left": []}, d=d)
+
+MODULES_3D.update({
+    "bed_v1_3d": {
+        "id": "bed_v1_3d", "w": 4, "h": 3, "d": 3, "zone": "bed",
+        "scalable_d": True,
+        "description": "Bed, 4 wide × 3 tall — narrow headboard with mattress body and right exit.",
+        "tags": ["bed", "h3", "narrow-headboard"],
+        "whd_segments_fn": _bed_v1_segs_3d,
+        "whd_ports_fn":    _bed_ports_3d,
+    },
+    "bed_v2_3d": {
+        "id": "bed_v2_3d", "w": 4, "h": 3, "d": 3, "zone": "bed",
+        "scalable_d": True,
+        "description": "Bed, 4 wide × 3 tall — wider headboard body with right exit.",
+        "tags": ["bed", "h3", "wide-headboard"],
+        "whd_segments_fn": _bed_v2_segs_3d,
+        "whd_ports_fn":    _bed_ports_3d,
+    },
+})
+
+# ── Bed 3D zone configuration ─────────────────────────────────────────────────
+BED_ZONES_3D = [
+    {"id": "bed", "x_rule": ["first 4"], "y_rule": ["first 3"], "z_rule": ["full"],
+     "modules": ["bed_v1_3d", "bed_v2_3d"]},
+]

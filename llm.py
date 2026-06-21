@@ -199,17 +199,17 @@ _ROOF_KW: dict = {
                      "divided roof", "articulated top"],
     "pitched":      ["angled roof", "pitched roof", "tent-like", "lean-to",
                      "slanted ceiling", "slanted roof"],
-    "plain":        ["plain ceiling", "clean top", "simple roof",
-                     "flat ceiling", "unfussy overhead"],
+    "plain":        ["plain ceiling", "clean top", "simple roof", "plain roof",
+                     "flat ceiling", "unfussy overhead", "roof to plain", "roof plain"],
     "any":          ["no preference", "any roof", "whatever roof"],
 }
 
 
 def _apply_roof_changes(msg: str, current: dict, params: dict) -> dict:
     msg_l = msg.lower()
-    roof  = params.get("roof_style", current.get("roof_style", "any"))
     tags  = [t for t in params.get("preferred_tags", []) if t not in _SHELF_TAGS]
     changed = False
+    roof = current.get("roof_style", "any")  # start from current, not LLM output
 
     if any(kw in msg_l for kw in _ROOF_KW["more_shelves"]):
         roof, changed = "divided", True
@@ -226,9 +226,10 @@ def _apply_roof_changes(msg: str, current: dict, params: dict) -> dict:
     elif any(kw in msg_l for kw in _ROOF_KW["any"]):
         roof, changed = "any", True
 
-    if changed:
-        return {**params, "roof_style": roof, "preferred_tags": tags}
-    return params
+    if not changed:
+        # No keyword matched — pass through the LLM's value; main locking handles drift.
+        return params
+    return {**params, "roof_style": roof, "preferred_tags": tags}
 
 
 _CHAIR_HEIGHT_TAGS    = {"tall_chairs", "low_chairs"}
@@ -308,16 +309,20 @@ def _generate(system: str, prompt: str,
             role = "model" if msg["role"] == "assistant" else "user"
             contents.append(gtypes.Content(role=role, parts=[gtypes.Part(text=msg["content"])]))
         contents.append(gtypes.Content(role="user", parts=[gtypes.Part(text=prompt)]))
-        response = client.models.generate_content(
-            model=MODEL,
-            contents=contents,
-            config=gtypes.GenerateContentConfig(
-                system_instruction=system,
-                response_mime_type="application/json",
-                temperature=temperature,
-            ),
+        # Gemma models don't support response_mime_type — omit it and parse manually.
+        _is_gemma = MODEL.startswith("gemma")
+        cfg = gtypes.GenerateContentConfig(
+            system_instruction=system,
+            temperature=temperature,
+            **({} if _is_gemma else {"response_mime_type": "application/json"}),
         )
-        return json.loads(response.text)
+        response = client.models.generate_content(model=MODEL, contents=contents, config=cfg)
+        text = response.text.strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        return json.loads(text.strip())
 
     if provider == "openai":
         from openai import OpenAI
@@ -371,6 +376,22 @@ def chat_modify_dining(
     hist       = clean_hist[-_HISTORY_LIMIT:]
     last_error = ""
 
+    _msg_l = user_message.lower()
+
+    _seating_kw  = ["chair", "seat", "seating", "one person", "solo", "alone", "face-to-face",
+                    "both sides", "two people", "single side"]
+    _depth_kw    = ["deeper", "shallower", "depth", "longer table", "shorter table",
+                    "longer section", "shorter section", "more depth", "less depth",
+                    "extend", "longer dining", "make it longer", "make it shorter"]
+    _ceiling_kw  = ["higher ceiling", "taller room", "more headroom", "lower ceiling",
+                    "ceiling height", "room height", "raise the ceiling", "airy",
+                    "dramatic space", "tall room", "short room", "change the height"]
+    _style_kw    = ["spacious", "compact", "wider section", "narrower section",
+                    "open layout", "tighter", "wider table", "bigger section",
+                    "smaller section", "make it wider", "make it narrower"]
+    _furniture_kw = [kw for kws in _KW.values() for kw in kws]
+    _all_roof_kw  = [kw for kws in _ROOF_KW.values() for kw in kws]
+
     for attempt in range(3):
         try:
             result = _generate(system, prompt, history=hist)
@@ -381,6 +402,20 @@ def chat_modify_dining(
             result = _apply_corridor_changes(user_message, current_spec, result)
             result = _apply_furniture_height(user_message, current_spec, result)
             result = _apply_roof_changes(user_message, current_spec, result)
+            # Lock every field the user's message doesn't explicitly address.
+            _roof_kw = _all_roof_kw + ["roof", "ceiling type", "shelf type"]
+            if not any(kw in _msg_l for kw in _seating_kw):
+                result["num_chairs"] = current_spec.get("num_chairs", 2)
+            if not any(kw in _msg_l for kw in _depth_kw):
+                result["d"] = current_spec.get("d", 3)
+            if not any(kw in _msg_l for kw in _ceiling_kw):
+                result["h"] = current_spec.get("h", 9)
+            if not any(kw in _msg_l for kw in _style_kw):
+                result["dining_style"] = current_spec.get("dining_style", "compact")
+            if not any(kw in _msg_l for kw in _roof_kw):
+                result["roof_style"] = current_spec.get("roof_style", "any")
+            if not any(kw in _msg_l for kw in _furniture_kw + _all_roof_kw):
+                result["preferred_tags"] = current_spec.get("preferred_tags", [])
             return result, reply
         except Exception as e:
             last_error = str(e)

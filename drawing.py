@@ -6,7 +6,7 @@ import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 
-from modules import MODULES, ZONE_COLORS, LINE_COLOR, PORT_COLOR, GRID_COLOR, ZONE_ORDER, _SHELF_CATEGORY
+from modules import MODULES, ZONE_COLORS, ZONE_ALPHAS, LINE_COLOR, PORT_COLOR, GRID_COLOR, ZONE_ORDER, _SHELF_CATEGORY
 from solver import get_segments, get_ports
 
 
@@ -26,10 +26,12 @@ def _draw_module(ax, mod: dict, x_off: float, y_off: float,
     h = placed_h if placed_h is not None else mod["h"]
 
     if show_grid:
-        fc = ZONE_COLORS.get(mod.get("zone", ""), "#ffffff")
+        zone = mod.get("zone", "")
+        fc    = ZONE_COLORS.get(zone, "#ffffff")
+        alpha = ZONE_ALPHAS.get(zone, 0.50)
         ax.add_patch(patches.Rectangle(
             (x_off, y_off), w, h,
-            facecolor=fc, alpha=0.25, zorder=0, linewidth=0,
+            facecolor=fc, alpha=alpha, zorder=0, linewidth=0,
         ))
         _draw_grid(ax, x_off, y_off, w, h)
 
@@ -197,6 +199,73 @@ def plot_module_library(section: str = "Dining") -> plt.Figure:
     return fig
 
 
+_PLAN_CORRIDOR_COLOR = "#B0ADA6"
+_PLAN_SECTION_COLORS = {
+    "dining":  "#7D8B7A",
+    "kitchen": "#9A8870",
+    "living":  "#6E7A6C",
+    "bed":     "#7A9A9A",
+    "bath":    "#7A9190",
+}
+
+
+def plot_plan_view(sections: list, corridor_side: str = "none",
+                   corridor_w: int = 2) -> plt.Figure:
+    """Top-down (plan) view of the assembled dwelling derived from solver results."""
+    if not sections:
+        return plt.figure()
+
+    W        = max(s["W"] for s in sections)
+    total_D  = sum(s["d"] for s in sections)
+    scale    = max(0.6, 5.0 / max(W, total_D))
+    fig, ax  = plt.subplots(figsize=(W * scale, total_D * scale))
+
+    d_cursor = 0.0
+    for s in sections:
+        sec_d  = s["d"]
+        color  = _PLAN_SECTION_COLORS.get(s["type"], "#C8C5BE")
+        sec_W  = s["W"]
+
+        if corridor_side == "right":
+            inner_W = sec_W - corridor_w
+            ax.add_patch(patches.Rectangle(
+                (0, d_cursor), inner_W, sec_d,
+                facecolor=color, edgecolor="#333", linewidth=1.0,
+                alpha=0.7, zorder=1))
+            ax.add_patch(patches.Rectangle(
+                (inner_W, d_cursor), corridor_w, sec_d,
+                facecolor=_PLAN_CORRIDOR_COLOR, edgecolor="#333", linewidth=0.6, alpha=0.7))
+            ax.text(inner_W / 2, d_cursor + sec_d / 2, s["type"],
+                    ha="center", va="center", fontsize=6, color="#333")
+        elif corridor_side == "left":
+            inner_W = sec_W - corridor_w
+            ax.add_patch(patches.Rectangle(
+                (0, d_cursor), corridor_w, sec_d,
+                facecolor=_PLAN_CORRIDOR_COLOR, edgecolor="#333", linewidth=0.6, alpha=0.7))
+            ax.add_patch(patches.Rectangle(
+                (corridor_w, d_cursor), inner_W, sec_d,
+                facecolor=color, edgecolor="#333", linewidth=1.0,
+                alpha=0.7, zorder=1))
+            ax.text(corridor_w + inner_W / 2, d_cursor + sec_d / 2, s["type"],
+                    ha="center", va="center", fontsize=6, color="#333")
+        else:
+            ax.add_patch(patches.Rectangle(
+                (0, d_cursor), sec_W, sec_d,
+                facecolor=color, edgecolor="#333", linewidth=1.0,
+                alpha=0.7, zorder=1))
+            ax.text(sec_W / 2, d_cursor + sec_d / 2, s["type"],
+                    ha="center", va="center", fontsize=6, color="#333")
+
+        d_cursor += sec_d
+
+    ax.set_xlim(-0.2, W + 0.2)
+    ax.set_ylim(-0.2, total_D + 0.2)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    fig.tight_layout()
+    return fig
+
+
 def plot_grid_only(W: int, H: int, section_type: str,
                    corridor: str = "none", corridor_w: int = 2) -> plt.Figure:
     SECTION_COLORS = {
@@ -213,9 +282,9 @@ def plot_grid_only(W: int, H: int, section_type: str,
     if corridor == "corridor_right":
         inner_W = W - corridor_w
         ax.add_patch(patches.Rectangle((0, 0), inner_W, H,
-                     facecolor=fill, alpha=0.18, zorder=0, linewidth=0))
+                     facecolor=fill, alpha=0.50, zorder=0, linewidth=0))
         ax.add_patch(patches.Rectangle((inner_W, 0), corridor_w, H,
-                     facecolor=corr_fill, alpha=0.25, zorder=0, linewidth=0))
+                     facecolor=corr_fill, alpha=0.50, zorder=0, linewidth=0))
         _draw_grid(ax, 0, 0, inner_W, H)
         _draw_grid(ax, inner_W, 0, corridor_w, H)
         ax.text(inner_W + corridor_w / 2, H / 2, "corridor",
@@ -224,9 +293,9 @@ def plot_grid_only(W: int, H: int, section_type: str,
     elif corridor == "corridor_left":
         inner_W = W - corridor_w
         ax.add_patch(patches.Rectangle((0, 0), corridor_w, H,
-                     facecolor=corr_fill, alpha=0.25, zorder=0, linewidth=0))
+                     facecolor=corr_fill, alpha=0.50, zorder=0, linewidth=0))
         ax.add_patch(patches.Rectangle((corridor_w, 0), inner_W, H,
-                     facecolor=fill, alpha=0.18, zorder=0, linewidth=0))
+                     facecolor=fill, alpha=0.50, zorder=0, linewidth=0))
         _draw_grid(ax, 0, 0, corridor_w, H)
         _draw_grid(ax, corridor_w, 0, inner_W, H)
         ax.text(corridor_w / 2, H / 2, "corridor",
@@ -234,7 +303,7 @@ def plot_grid_only(W: int, H: int, section_type: str,
         cx = corridor_w + inner_W / 2
     else:
         ax.add_patch(patches.Rectangle((0, 0), W, H,
-                     facecolor=fill, alpha=0.18, zorder=0, linewidth=0))
+                     facecolor=fill, alpha=0.50, zorder=0, linewidth=0))
         _draw_grid(ax, 0, 0, W, H)
         cx = W / 2
 

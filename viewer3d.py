@@ -21,8 +21,17 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers '3d' projection)
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
-from modules import LINE_COLOR, PORT_COLOR, GRID_COLOR, ZONE_ORDER, ZONE_COLORS
+from modules import LINE_COLOR, PORT_COLOR, GRID_COLOR, ZONE_ORDER, ZONE_COLORS, ZONE_ALPHAS
 from modules3d import MODULES_3D, get_segments_3d, get_ports_3d
+
+
+def _clean_ax(fig: plt.Figure, ax) -> None:
+    """Force white / transparent backgrounds on a 3D axes — prevents any dark rcParams bleed-through."""
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    for pane in (ax.xaxis.pane, ax.yaxis.pane, ax.zaxis.pane):
+        pane.fill = False
+        pane.set_edgecolor("#d0d4d0")
 
 
 # ── Voxel outline (12 edges of the module's bounding box) ─────────────────────
@@ -55,20 +64,22 @@ def _draw_module_3d(ax, mod: dict,
                     w: int, h: int, d: int,
                     show_voxel: bool = True, show_ports: bool = True,
                     show_zone_fill: bool = True,
-                    zone_alpha: float = 0.08,
+                    zone_alpha: float = 0.50,
                     line_width: float = 2.0) -> None:
     """Draw a single placed module. Emits ``(x, z, y)`` so the on-screen
     vertical axis is ``y`` (height)."""
     if show_zone_fill:
-        zone_color = ZONE_COLORS.get(mod.get("zone", ""), None)
-        if zone_color is not None and zone_alpha > 0:
+        zone       = mod.get("zone", "")
+        zone_color = ZONE_COLORS.get(zone, None)
+        eff_alpha  = ZONE_ALPHAS.get(zone, zone_alpha)
+        if zone_color is not None and eff_alpha > 0:
             faces_xzy = [
                 [(p[0] + xo, p[2] + zo, p[1] + yo) for p in face]
                 for face in _voxel_faces(w, h, d)
             ]
             coll = Poly3DCollection(
                 faces_xzy, facecolor=zone_color, edgecolor="none",
-                alpha=zone_alpha, zorder=0,
+                alpha=eff_alpha, zorder=0,
             )
             ax.add_collection3d(coll)
 
@@ -102,6 +113,7 @@ def plot_section_3d(placed: List[dict], W: int, H: int, D: int,
                     elev: float = 22, azim: float = -55) -> plt.Figure:
     fig = plt.figure(figsize=(11, 9))
     ax = fig.add_subplot(111, projection="3d")
+    _clean_ax(fig, ax)
 
     for p in placed:
         mod = MODULES_3D[p["module_id"]]
@@ -117,6 +129,91 @@ def plot_section_3d(placed: List[dict], W: int, H: int, D: int,
     ax.set_box_aspect((W, D, H))
     ax.view_init(elev=elev, azim=azim)
     ax.set_title(f"Nomadic Engine — 3D Section  {W} × {H} × {D}", fontsize=11, pad=10)
+    ax.grid(False)
+    fig.tight_layout()
+    return fig
+
+
+# ── plot_dwelling_3d ──────────────────────────────────────────────────────────
+
+def plot_dwelling_3d(sections: list,
+                     corridor_side: str = "none",
+                     corridor_w: int = 2,
+                     elev: float = 22, azim: float = -55) -> plt.Figure:
+    """
+    Render all sections of the assembled dwelling in one combined 3D figure.
+
+    Each section's placed modules already have z_off shifted by their depth
+    offset (done by solve_dwelling_3d), so they sit end-to-end along z.
+    """
+    if not sections:
+        return plt.figure()
+
+    W       = max(s["W"] for s in sections)   # bounding-box width = widest section
+    H       = sections[0]["H"]
+    total_D = sum(s["d"] for s in sections)
+
+    fig = plt.figure(figsize=(max(11, total_D * 1.2), 9))
+    ax  = fig.add_subplot(111, projection="3d")
+    _clean_ax(fig, ax)
+
+    # ── Module geometry ───────────────────────────────────────────────────────
+    for s in sections:
+        if s["placed"] is None:
+            continue
+        for p in s["placed"]:
+            mod = MODULES_3D[p["module_id"]]
+            _draw_module_3d(ax, mod,
+                            p["x_off"], p["y_off"], p["z_off"],
+                            p["w"], p["h"], p["d"],
+                            show_voxel=True, show_ports=False)
+
+    # ── Longitudinal structural frame lines (runs along full z depth) ─────────
+    for (xd, yd) in [(0, 0), (W, 0), (0, H), (W, H)]:
+        ax.plot([xd, xd], [0, total_D], [yd, yd],
+                color=LINE_COLOR, lw=1.5, zorder=6)
+
+    # Full rectangular rib frames at every section boundary + dwelling end cap.
+    _frame_zs = sorted({s["d_offset"] for s in sections} | {total_D})
+    for _z in _frame_zs:
+        ax.plot([0, W], [_z, _z], [0, 0], color=LINE_COLOR, lw=1.2, zorder=5)
+        ax.plot([0, W], [_z, _z], [H, H], color=LINE_COLOR, lw=1.2, zorder=5)
+        ax.plot([0, 0], [_z, _z], [0, H], color=LINE_COLOR, lw=1.2, zorder=5)
+        ax.plot([W, W], [_z, _z], [0, H], color=LINE_COLOR, lw=1.2, zorder=5)
+
+    # Longitudinal structural members at every module corner position.
+    _corner_pts: set = set()
+    for s in sections:
+        if s["placed"] is None:
+            continue
+        for p in s["placed"]:
+            x0, y0 = float(p["x_off"]), float(p["y_off"])
+            for xi in [x0, x0 + p["w"]]:
+                for yi in [y0, y0 + p["h"]]:
+                    _corner_pts.add((xi, yi))
+    for (xi, yi) in _corner_pts:
+        ax.plot([xi, xi], [0, total_D], [yi, yi],
+                color=LINE_COLOR, lw=0.7, alpha=0.45, zorder=3)
+
+    # Labels for failed (placeholder) sections.
+    for s in sections:
+        if s["placed"] is None:
+            _mid_z = s["d_offset"] + s["d"] / 2
+            ax.text(W / 2, _mid_z, H / 2, s["type"].upper(),
+                    ha="center", va="center", fontsize=9, color="#999999")
+
+    ax.set_xlim(0, W)
+    ax.set_ylim(0, total_D)
+    ax.set_zlim(0, H)
+    ax.set_xlabel("x  (width)",  labelpad=6)
+    ax.set_ylabel("z  (depth)",  labelpad=6)
+    ax.set_zlabel("y  (height)", labelpad=6)
+    ax.set_box_aspect((W, total_D, H))
+    ax.view_init(elev=elev, azim=azim)
+    ax.set_title(
+        f"Nomadic Engine — Dwelling 3D   {W}w × {H}h × {total_D:.0f}d",
+        fontsize=11, pad=10,
+    )
     ax.grid(False)
     fig.tight_layout()
     return fig
@@ -149,9 +246,11 @@ def plot_module_library_3d(section: str = "") -> plt.Figure:
     n_cols = 5
     n_rows = math.ceil(len(mods) / n_cols)
     fig = plt.figure(figsize=(n_cols * 3.2, n_rows * 3.0))
+    fig.patch.set_facecolor("white")
 
     for i, mod in enumerate(mods):
         ax = fig.add_subplot(n_rows, n_cols, i + 1, projection="3d")
+        _clean_ax(fig, ax)
         w, h, d = mod["w"], mod["h"], mod["d"]
         _draw_module_3d(ax, mod, 0.0, 0.0, 0.0, w, h, d)
         ax.set_xlim(0, w); ax.set_ylim(0, d); ax.set_zlim(0, h)
