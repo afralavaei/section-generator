@@ -25,13 +25,15 @@ from modules import LINE_COLOR, PORT_COLOR, GRID_COLOR, ZONE_ORDER, ZONE_COLORS,
 from modules3d import MODULES_3D, get_segments_3d, get_ports_3d
 
 
-def _clean_ax(fig: plt.Figure, ax) -> None:
-    """Force white / transparent backgrounds on a 3D axes — prevents any dark rcParams bleed-through."""
-    fig.patch.set_facecolor("white")
-    ax.set_facecolor("white")
+def _clean_ax(fig: plt.Figure, ax, dark: bool = False) -> None:
+    """Set figure/axes backgrounds. dark=True → transparent with subtle pane edges."""
+    bg = "none" if dark else "white"
+    fig.patch.set_facecolor(bg)
+    ax.set_facecolor(bg)
+    edge = "#1c2420" if dark else "#d0d4d0"
     for pane in (ax.xaxis.pane, ax.yaxis.pane, ax.zaxis.pane):
         pane.fill = False
-        pane.set_edgecolor("#d0d4d0")
+        pane.set_edgecolor(edge)
 
 
 # ── Voxel outline (12 edges of the module's bounding box) ─────────────────────
@@ -65,9 +67,15 @@ def _draw_module_3d(ax, mod: dict,
                     show_voxel: bool = True, show_ports: bool = True,
                     show_zone_fill: bool = True,
                     zone_alpha: float = 0.50,
-                    line_width: float = 2.0) -> None:
+                    line_width: float = 2.0,
+                    line_color_override: str | None = None,
+                    grid_color_override: str | None = None,
+                    pipe: bool = False) -> None:
     """Draw a single placed module. Emits ``(x, z, y)`` so the on-screen
     vertical axis is ``y`` (height)."""
+    lc = line_color_override or LINE_COLOR
+    gc = grid_color_override or GRID_COLOR
+
     if show_zone_fill:
         zone       = mod.get("zone", "")
         zone_color = ZONE_COLORS.get(zone, None)
@@ -89,14 +97,14 @@ def _draw_module_3d(ax, mod: dict,
                 [p0[0] + xo, p1[0] + xo],
                 [p0[2] + zo, p1[2] + zo],
                 [p0[1] + yo, p1[1] + yo],
-                color=GRID_COLOR, lw=0.4, zorder=1,
+                color=gc, lw=0.4, zorder=1,
             )
 
     for seg in get_segments_3d(mod, w, h, d):
         xs = [p[0] + xo for p in seg]
         ys = [p[1] + yo for p in seg]
         zs = [p[2] + zo for p in seg]
-        ax.plot(xs, zs, ys, color=LINE_COLOR, lw=line_width, zorder=3,
+        ax.plot(xs, zs, ys, color=lc, lw=line_width, zorder=3,
                 solid_capstyle="round", solid_joinstyle="round")
 
     if show_ports:
@@ -110,22 +118,34 @@ def _draw_module_3d(ax, mod: dict,
 
 def plot_section_3d(placed: List[dict], W: int, H: int, D: int,
                     show_ports: bool = True,
-                    elev: float = 22, azim: float = -55) -> plt.Figure:
+                    elev: float = 28, azim: float = -60,
+                    dark: bool = False) -> plt.Figure:
     fig = plt.figure(figsize=(11, 9))
     ax = fig.add_subplot(111, projection="3d")
-    _clean_ax(fig, ax)
+    _clean_ax(fig, ax, dark=dark)
+
+    line_c = "#e8ece8" if dark else LINE_COLOR
+    grid_c = "#2a3028" if dark else GRID_COLOR
 
     for p in placed:
         mod = MODULES_3D[p["module_id"]]
         _draw_module_3d(ax, mod,
                         p["x_off"], p["y_off"], p["z_off"],
                         p["w"], p["h"], p["d"],
-                        show_voxel=True, show_ports=show_ports)
+                        show_voxel=True, show_ports=show_ports,
+                        show_zone_fill=not dark,
+                        line_color_override=line_c,
+                        grid_color_override=grid_c)
 
     ax.set_xlim(0, W); ax.set_ylim(0, D); ax.set_zlim(0, H)
-    ax.set_xlabel("x  (width)",  labelpad=6)
-    ax.set_ylabel("z  (depth)",  labelpad=6)
-    ax.set_zlabel("y  (height)", labelpad=6)
+    label_color = "#8a9a88" if dark else "black"
+    ax.set_xlabel(f"width  {W}×40 = {W*40} cm",  labelpad=6, color=label_color)
+    ax.set_ylabel(f"depth  {D}×40 = {D*40} cm",  labelpad=6, color=label_color)
+    ax.set_zlabel(f"height  {H}×40 = {H*40} cm", labelpad=6, color=label_color)
+    ax.xaxis.set_ticklabels([])
+    ax.yaxis.set_ticklabels([])
+    ax.zaxis.set_ticklabels([])
+    ax.tick_params(colors=label_color, length=0)
     ax.set_box_aspect((W, D, H))
     ax.view_init(elev=elev, azim=azim)
     ax.set_title(f"Nomadic Engine — 3D Section  {W} × {H} × {D}", fontsize=11, pad=10)
@@ -139,7 +159,9 @@ def plot_section_3d(placed: List[dict], W: int, H: int, D: int,
 def plot_dwelling_3d(sections: list,
                      corridor_side: str = "none",
                      corridor_w: int = 2,
-                     elev: float = 22, azim: float = -55) -> plt.Figure:
+                     elev: float = 25, azim: float = -60,
+                     dark: bool = False,
+                     highlight_section: str | None = None) -> plt.Figure:
     """
     Render all sections of the assembled dwelling in one combined 3D figure.
 
@@ -149,39 +171,50 @@ def plot_dwelling_3d(sections: list,
     if not sections:
         return plt.figure()
 
-    W       = max(s["W"] for s in sections)   # bounding-box width = widest section
+    W       = max(s["W"] for s in sections)
     H       = sections[0]["H"]
     total_D = sum(s["d"] for s in sections)
 
-    fig = plt.figure(figsize=(max(11, total_D * 1.2), 9))
+    fig = plt.figure(figsize=(10, 10))   # square → SVG overlay aligns without letterboxing
     ax  = fig.add_subplot(111, projection="3d")
-    _clean_ax(fig, ax)
+    _clean_ax(fig, ax, dark=dark)
 
-    # ── Module geometry ───────────────────────────────────────────────────────
+    lc      = "#e8ece8" if dark else LINE_COLOR
+    gc      = "#2a3028" if dark else GRID_COLOR
+    lbl_clr = "#8a9a88" if dark else "black"
+
     for s in sections:
         if s["placed"] is None:
             continue
+        # When a section is highlighted, others dim; the active one uses full brightness.
+        if highlight_section and dark:
+            is_active = s["type"] == highlight_section
+            sec_lc = "#ffffff" if is_active else "#2a3028"
+            sec_gc = "#1a2018" if is_active else "#141810"
+            sec_lw = 2.2 if is_active else 0.6
+        else:
+            sec_lc, sec_gc, sec_lw = lc, gc, 2.0
         for p in s["placed"]:
             mod = MODULES_3D[p["module_id"]]
             _draw_module_3d(ax, mod,
                             p["x_off"], p["y_off"], p["z_off"],
                             p["w"], p["h"], p["d"],
-                            show_voxel=True, show_ports=False)
+                            show_voxel=True, show_ports=False,
+                            show_zone_fill=not dark,
+                            line_color_override=sec_lc,
+                            grid_color_override=sec_gc,
+                            line_width=sec_lw)
 
-    # ── Longitudinal structural frame lines (runs along full z depth) ─────────
     for (xd, yd) in [(0, 0), (W, 0), (0, H), (W, H)]:
-        ax.plot([xd, xd], [0, total_D], [yd, yd],
-                color=LINE_COLOR, lw=1.5, zorder=6)
+        ax.plot([xd, xd], [0, total_D], [yd, yd], color=lc, lw=1.5, zorder=6)
 
-    # Full rectangular rib frames at every section boundary + dwelling end cap.
     _frame_zs = sorted({s["d_offset"] for s in sections} | {total_D})
     for _z in _frame_zs:
-        ax.plot([0, W], [_z, _z], [0, 0], color=LINE_COLOR, lw=1.2, zorder=5)
-        ax.plot([0, W], [_z, _z], [H, H], color=LINE_COLOR, lw=1.2, zorder=5)
-        ax.plot([0, 0], [_z, _z], [0, H], color=LINE_COLOR, lw=1.2, zorder=5)
-        ax.plot([W, W], [_z, _z], [0, H], color=LINE_COLOR, lw=1.2, zorder=5)
+        ax.plot([0, W], [_z, _z], [0, 0], color=lc, lw=1.2, zorder=5)
+        ax.plot([0, W], [_z, _z], [H, H], color=lc, lw=1.2, zorder=5)
+        ax.plot([0, 0], [_z, _z], [0, H], color=lc, lw=1.2, zorder=5)
+        ax.plot([W, W], [_z, _z], [0, H], color=lc, lw=1.2, zorder=5)
 
-    # Longitudinal structural members at every module corner position.
     _corner_pts: set = set()
     for s in sections:
         if s["placed"] is None:
@@ -193,27 +226,26 @@ def plot_dwelling_3d(sections: list,
                     _corner_pts.add((xi, yi))
     for (xi, yi) in _corner_pts:
         ax.plot([xi, xi], [0, total_D], [yi, yi],
-                color=LINE_COLOR, lw=0.7, alpha=0.45, zorder=3)
+                color=lc, lw=0.7, alpha=0.45, zorder=3)
 
-    # Labels for failed (placeholder) sections.
     for s in sections:
         if s["placed"] is None:
             _mid_z = s["d_offset"] + s["d"] / 2
             ax.text(W / 2, _mid_z, H / 2, s["type"].upper(),
-                    ha="center", va="center", fontsize=9, color="#999999")
+                    ha="center", va="center", fontsize=9, color=lbl_clr)
 
     ax.set_xlim(0, W)
     ax.set_ylim(0, total_D)
     ax.set_zlim(0, H)
-    ax.set_xlabel("x  (width)",  labelpad=6)
-    ax.set_ylabel("z  (depth)",  labelpad=6)
-    ax.set_zlabel("y  (height)", labelpad=6)
+    ax.set_xlabel(f"width  {W}×40 = {W*40} cm",          labelpad=6, color=lbl_clr)
+    ax.set_ylabel(f"depth  {total_D}×40 = {total_D*40} cm", labelpad=6, color=lbl_clr)
+    ax.set_zlabel(f"height  {H}×40 = {H*40} cm",          labelpad=6, color=lbl_clr)
+    ax.xaxis.set_ticklabels([])
+    ax.yaxis.set_ticklabels([])
+    ax.zaxis.set_ticklabels([])
+    ax.tick_params(colors=lbl_clr, length=0)
     ax.set_box_aspect((W, total_D, H))
     ax.view_init(elev=elev, azim=azim)
-    ax.set_title(
-        f"Nomadic Engine — Dwelling 3D   {W}w × {H}h × {total_D:.0f}d",
-        fontsize=11, pad=10,
-    )
     ax.grid(False)
     fig.tight_layout()
     return fig
@@ -225,7 +257,78 @@ _SECTION_ZONES_3D = {
     "Dining":  {"chair_left", "chair_right", "table", "shelf", "corridor_left", "corridor_right"},
     "Kitchen": {"lower_cabinet", "upper_cabinet", "kitchen_wall", "shelf"},
     "Living":  {"sofa", "table", "tv_table", "shelf"},
+    "Bed":     {"bed", "shelf", "corridor_left", "corridor_right"},
 }
+
+_ZONE_CATEGORY_3D: dict = {
+    "chair_left":     "Chairs",
+    "chair_right":    "Chairs",
+    "table":          "Tables",
+    "sofa":           "Sofas",
+    "tv_table":       "TV Tables",
+    "shelf":          "Shelves",
+    "lower_cabinet":  "Lower Cabinets",
+    "upper_cabinet":  "Upper Cabinets",
+    "kitchen_wall":   "Kitchen Walls",
+    "bed":            "Beds",
+    "corridor_left":  "Corridors",
+    "corridor_right": "Corridors",
+}
+
+_CATEGORY_ORDER_3D: list = [
+    "Beds", "Chairs", "Sofas", "TV Tables", "Tables",
+    "Lower Cabinets", "Upper Cabinets", "Kitchen Walls",
+    "Shelves", "Corridors",
+]
+
+
+def _library_mods_3d(section: str) -> list:
+    allowed = _SECTION_ZONES_3D.get(section)
+    return sorted(
+        (m for m in MODULES_3D.values()
+         if m["zone"] != "filler"
+         and "conn_" not in m["id"]
+         and (allowed is None or m["zone"] in allowed)
+         and "legacy" not in m.get("description", "")),
+        key=lambda m: (
+            ZONE_ORDER.index(m["zone"]) if m["zone"] in ZONE_ORDER else 99,
+            m["h"], m["id"],
+        ),
+    )
+
+
+def get_library_3d_by_zone(section: str) -> list[tuple[str, list]]:
+    """Return [(category_label, [mods])] merged by furniture type, in display order."""
+    from collections import OrderedDict
+    groups: OrderedDict = OrderedDict()
+    for mod in _library_mods_3d(section):
+        cat = _ZONE_CATEGORY_3D.get(mod["zone"], mod["zone"].replace("_", " ").title())
+        groups.setdefault(cat, []).append(mod)
+    return sorted(groups.items(),
+                  key=lambda kv: _CATEGORY_ORDER_3D.index(kv[0])
+                                 if kv[0] in _CATEGORY_ORDER_3D else 99)
+
+
+def plot_zone_group_3d(zone_label: str, mods: list, n_cols: int = 4) -> plt.Figure:
+    """Render one zone group as a tight grid of 3D module thumbnails."""
+    n_rows = max(1, math.ceil(len(mods) / n_cols))
+    fig = plt.figure(figsize=(n_cols * 3.2, n_rows * 3.0))
+    fig.patch.set_facecolor("white")
+    for i, mod in enumerate(mods):
+        ax = fig.add_subplot(n_rows, n_cols, i + 1, projection="3d")
+        _clean_ax(fig, ax)
+        w, h, d = mod["w"], mod["h"], mod["d"]
+        _draw_module_3d(ax, mod, 0.0, 0.0, 0.0, w, h, d)
+        ax.set_xlim(0, w); ax.set_ylim(0, d); ax.set_zlim(0, h)
+        ax.set_box_aspect((w, d, h))
+        ax.view_init(elev=20, azim=-55)
+        label = mod["id"].replace("chair_left_", "cl_").replace("chair_right_", "cr_") \
+                         .replace("_3d_v", "_v").replace("roof_3d_v1", "roof")
+        ax.set_title(f"{label}\n{w}×{h}×{d}", fontsize=6, pad=3)
+        ax.tick_params(labelsize=4)
+        ax.grid(False)
+    fig.tight_layout()
+    return fig
 
 
 def plot_module_library_3d(section: str = "") -> plt.Figure:

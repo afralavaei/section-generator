@@ -701,7 +701,9 @@ def solve3d(W: int, H: int, D: int, seed: int,
                 by_h.setdefault(sh, []).append(mid)
         if not by_h:
             return None
-        shelf_h = rng.choice(list(by_h.keys()))
+        # Pin shelf height to 2 for all dining styles. Keeps 2D/3D structurally aligned.
+        # (compact vs spacious is expressed in furniture height, not the shelf.)
+        shelf_h = 2 if 2 in by_h else rng.choice(list(by_h.keys()))
         shelf_mid = rng.choice(by_h[shelf_h])
         if inner_W >= 6:
             x_post = float(inner_W) - 0.5 if corridor == "corridor_right" else float(corridor_w) + 0.5
@@ -745,9 +747,28 @@ def solve3d(W: int, H: int, D: int, seed: int,
             ]
 
     # Apply dining_style: compact uses narrow-top tables, spacious uses wide-top tables.
+    # Pin furniture height to match: compact→h2, spacious→h3 — keeps 2D and 3D consistent.
     table_mods_3d = _TABLE_COMPACT_3D if dining_style == "compact" else _TABLE_SPACIOUS_3D
+    _h_rule_3d = "first 2" if dining_style == "compact" else "first 3"
     active_zones = [
         {**z, "modules": table_mods_3d} if z.get("id") == "table" else z
+        for z in active_zones
+    ]
+    _tag_h_3d = {
+        "tall_furniture": "first 3", "low_furniture": "first 2",
+        "tall_chairs":    "first 3", "low_chairs":    "first 2",
+        "tall_table":     "first 3", "low_table":     "first 2",
+    }
+    _tags_3d = preferred_tags or []
+    _chair_rule_3d = next((_tag_h_3d[t] for t in _tags_3d
+                           if t in {"tall_furniture","low_furniture","tall_chairs","low_chairs"}),
+                          _h_rule_3d)
+    _table_rule_3d = next((_tag_h_3d[t] for t in _tags_3d
+                           if t in {"tall_furniture","low_furniture","tall_table","low_table"}),
+                          _h_rule_3d)
+    active_zones = [
+        {**z, "y_rule": [_chair_rule_3d]} if z.get("id") in ("chair_left", "chair_right") else
+        {**z, "y_rule": [_table_rule_3d]} if z.get("id") == "table" else z
         for z in active_zones
     ]
 

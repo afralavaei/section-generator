@@ -2,13 +2,16 @@
 FastAPI backend for the Nomadic Engine configurator.
 
 Endpoints:
+  POST /render      — solve + render any section in 2D or 3D
   POST /onboarding  — translate 5 onboarding answers + site into an initial spec + render
   POST /chat        — modify dining spec via natural language + return reply + updated render
 """
 import base64
+import copy
 import io
 import matplotlib
 matplotlib.use("Agg")  # non-interactive backend — must be set before any pyplot import
+import matplotlib.pyplot as plt
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,7 +19,10 @@ from pydantic import BaseModel
 
 from llm import chat_modify_dining, onboarding_to_spec
 from solver import solve
-from drawing import plot_section
+from solver3d import solve3d
+from dwelling import solve_dwelling_3d, dwelling_sections_meta
+from drawing import plot_section, plot_plan_view
+from viewer3d import plot_section_3d, plot_dwelling_3d
 
 app = FastAPI(title="Nomadic Engine API")
 
@@ -33,6 +39,74 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/dwelling-spec")
+def get_dwelling_spec():
+    return _DEFAULT_DWELLING_SPEC
+
+
+# ── Greeting / suggestion helpers ─────────────────────────────────────────────
+
+def _spec_summary(spec: dict) -> str:
+    tags  = spec.get("preferred_tags", [])
+    parts = [
+        f"style **{spec.get('dining_style', 'compact')}**",
+        f"**{spec.get('num_chairs', 2)} chair{'s' if spec.get('num_chairs', 2) > 1 else ''}**",
+        f"height **{spec.get('h', 7)}**",
+        f"depth **{spec.get('d', 3)}**",
+        f"roof **{spec.get('roof_style', 'any')}**",
+    ]
+    if tags:
+        parts.append(f"tags **{', '.join(tags)}**")
+    return " · ".join(parts)
+
+
+def _initial_greeting(site: dict, answers: dict, spec: dict) -> str:
+    # Accept both React short-form IDs and legacy long-form IDs.
+    _occ = {
+        "solo": "just you", "couple": "two people",
+        "family": "your family", "group": "a large group", "large_group": "a large group",
+    }
+    _pur = {
+        "work": "remote work", "remote_work": "remote work",
+        "retreat": "relaxation",
+        "social": "hosting guests", "socialising": "hosting guests",
+        "research": "field research", "field_research": "field research",
+    }
+    occ_str = _occ.get(answers.get("occupants", ""), answers.get("occupants", "couple"))
+    pur_str  = _pur.get(answers.get("purpose",   ""), answers.get("purpose",   "remote work"))
+    return (
+        f"Hi! I'm your Nomadic Engine assistant. Based on your answers, I've designed "
+        f"a dining space for **{occ_str}** at **{site.get('name', 'your site')}**, "
+        f"suited for **{pur_str}**.\n\n"
+        f"{_spec_summary(spec)}\n\n"
+        "Is there anything you'd like to adjust?"
+    )
+
+
+def _dining_suggestions(spec: dict, answers: dict) -> list[str]:
+    sugg: list[str] = []
+    if spec.get("dining_style") == "compact":
+        sugg.append("Make it more spacious and open")
+    else:
+        sugg.append("Make it more compact and efficient")
+    if spec.get("h", 7) <= 8:
+        sugg.append("Raise the ceiling — make it feel more dramatic")
+    else:
+        sugg.append("Lower the ceiling for a cosier feel")
+    if "more_shelves" not in spec.get("preferred_tags", []):
+        sugg.append("Add storage shelves above the table")
+    else:
+        sugg.append("Remove the overhead shelves")
+    occ = answers.get("occupants", "couple")
+    if occ in ("family", "group", "large_group"):
+        sugg.append("Make it better for hosting large gatherings")
+    elif occ == "solo":
+        sugg.append("Give the single-person setup more presence")
+    else:
+        sugg.append("Make it feel more intimate for two")
+    return sugg
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _dining_W(dining_style: str, num_chairs: int, corridor_side: str, corridor_w: int) -> int:
@@ -41,63 +115,196 @@ def _dining_W(dining_style: str, num_chairs: int, corridor_side: str, corridor_w
     return inner + (corridor_w if corridor_side != "none" else 0)
 
 
-def _render(spec: dict) -> str | None:
-    """Solve + render the dining section described by spec. Returns base64 PNG or None."""
-    dining_style  = spec.get("dining_style",  "compact")
-    num_chairs    = spec.get("num_chairs",    2)
-    corridor_side = spec.get("corridor_side", "none")
-    corridor_w    = spec.get("corridor_w",    2)
-    H             = spec.get("h",             7)
-    seed          = spec.get("seed",          42)
-    roof_style    = spec.get("roof_style",    "any")
-    preferred_tags = spec.get("preferred_tags", [])
+# Default W for each non-dining section (inner cols + corridor_w where applicable)
+_SECTION_W = {
+    "kitchen": lambda cw: 5 + cw,   # inner 5 + corridor right
+    "living":  lambda cw: 7,         # compact full, no corridor by default
+    "bed":     lambda cw: 4 + cw,    # inner 4 + corridor right
+}
 
-    W = _dining_W(dining_style, num_chairs, corridor_side, corridor_w)
+# Sections that always use corridor_right internally
+_ALWAYS_CORR_RIGHT = {"kitchen", "bed"}
 
-    placed = solve(
-        W, H, seed,
-        corridor=corridor_side,
-        corridor_w=corridor_w,
-        dining_style=dining_style,
-        roof_style=roof_style,
-        section="dining",
-        preferred_tags=preferred_tags,
-    )
-    if placed is None:
+_DEFAULT_DWELLING_SPEC = {
+    "corridor_side": "right",
+    "corridor_w": 2,
+    "W": 9,
+    "H": 7,
+    "functions": [
+        {"type": "dining",  "d": 3, "seed": 46, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
+        {"type": "kitchen", "d": 3, "seed": 45, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
+        {"type": "living",  "d": 3, "seed": 44, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
+        {"type": "bed",     "d": 3, "seed": 42, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
+    ],
+}
+
+
+def _merge_dining_into_dwelling(dining_spec: dict) -> dict:
+    """Return a copy of _DEFAULT_DWELLING_SPEC with the dining function replaced
+    by the user's onboarding dining params.  Also updates H and corridor_side."""
+    merged = copy.deepcopy(_DEFAULT_DWELLING_SPEC)
+    num_chairs = dining_spec.get("num_chairs", 2)
+    corridor_side = dining_spec.get("corridor_side", merged["corridor_side"])
+    # solo always needs corridor
+    if num_chairs == 1 and corridor_side == "none":
+        corridor_side = "right"
+    merged["corridor_side"] = corridor_side
+    merged["corridor_w"]    = dining_spec.get("corridor_w", merged["corridor_w"])
+    if "h" in dining_spec:
+        # Cap dwelling H at 8 — kitchen/living/bed solvers get unstable above that.
+        # The standalone dining tab still uses the full h from the spec.
+        merged["H"] = min(int(dining_spec["h"]), 8)
+    for fn in merged.get("functions", []):
+        if fn.get("type") == "dining":
+            for key in ("dining_style", "num_chairs", "d", "roof_style",
+                        "preferred_tags", "seed"):
+                if key in dining_spec:
+                    fn[key] = dining_spec[key]
+            break
+    return merged
+
+
+def _render_dwelling(spec: dict | None = None,
+                     highlight_section: str | None = None) -> str | None:
+    """Solve + render the full assembled dwelling in 3D. Returns base64 PNG or None."""
+    dw_spec = spec if spec else _DEFAULT_DWELLING_SPEC
+    sections = solve_dwelling_3d(dw_spec)
+    if not any(s["placed"] is not None for s in sections):
         return None
-
-    import matplotlib.pyplot as plt
-    fig = plot_section(placed, W, H)
+    fig = plot_dwelling_3d(sections,
+                           corridor_side=dw_spec.get("corridor_side", "right"),
+                           corridor_w=dw_spec.get("corridor_w", 2),
+                           dark=True,
+                           highlight_section=highlight_section)
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
+    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight",
+                transparent=True, edgecolor="none")
     plt.close(fig)
     buf.seek(0)
     return base64.b64encode(buf.read()).decode()
+
+
+def _render_plan(dw_spec: dict) -> str | None:
+    """Render the dwelling plan view (top-down) from section metadata only."""
+    sections = dwelling_sections_meta(dw_spec)
+    if not sections:
+        return None
+    fig = plot_plan_view(
+        sections,
+        corridor_side=dw_spec.get("corridor_side", "right"),
+        corridor_w=int(dw_spec.get("corridor_w", 2)),
+        dark=True,
+    )
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight",
+                transparent=False, edgecolor="none")
+    plt.close(fig)
+    buf.seek(0)
+    return base64.b64encode(buf.read()).decode()
+
+
+def _render_section(spec: dict, section: str = "dining", view: str = "2D",
+                    highlight: str = "") -> str | None:
+    """Solve + render any section (or the full dwelling) in 2D or 3D."""
+    if section == "dwelling":
+        dw_spec = spec.get("dwelling_spec") or _merge_dining_into_dwelling(spec)
+        if view == "plan":
+            return _render_plan(dw_spec)
+        return _render_dwelling(dw_spec, highlight_section=highlight or None)
+    H            = spec.get("h",             7)
+    D            = spec.get("d",             3)
+    seed         = spec.get("seed",          42)
+    roof_style   = spec.get("roof_style",    "any")
+    corridor_side = spec.get("corridor_side", "none")
+    corridor_w   = spec.get("corridor_w",    2)
+
+    if section == "dining":
+        dining_style   = spec.get("dining_style",   "compact")
+        num_chairs     = spec.get("num_chairs",      2)
+        preferred_tags = spec.get("preferred_tags",  [])
+        # 1-chair dining with no corridor places table at "middle 2" which overlaps
+        # chair_left at "first 2" when inner_W=4.  Force corridor_right so the solver
+        # uses ZONES_FULL_ROOF_CORR_RIGHT_1CHAIR (chair[0,2) + table[2,4) — no overlap).
+        if num_chairs == 1 and corridor_side == "none":
+            corridor_side = "right"
+        W = _dining_W(dining_style, num_chairs, corridor_side, corridor_w)
+        solver_corr = f"corridor_{corridor_side}" if corridor_side in ("right", "left") else "none"
+    else:
+        dining_style   = spec.get("dining_style", "compact")
+        preferred_tags = []
+        W = spec.get("w", _SECTION_W[section](corridor_w))
+        solver_corr = "corridor_right" if section in _ALWAYS_CORR_RIGHT else (
+            f"corridor_{corridor_side}" if corridor_side in ("right", "left") else "none"
+        )
+
+    if view == "3D":
+        placed = solve3d(
+            W, H, D, seed,
+            corridor=solver_corr,
+            corridor_w=corridor_w,
+            dining_style=dining_style,
+            roof_style=roof_style,
+            section=section,
+            preferred_tags=preferred_tags if section == "dining" else None,
+        )
+        if placed is None:
+            return None
+        fig = plot_section_3d(placed, W, H, D, dark=True)
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", dpi=150, bbox_inches="tight",
+                    transparent=True, edgecolor="none")
+        plt.close(fig)
+    else:
+        placed = solve(
+            W, H, seed,
+            corridor=solver_corr,
+            corridor_w=corridor_w,
+            dining_style=dining_style,
+            roof_style=roof_style,
+            section=section,
+            preferred_tags=preferred_tags if section == "dining" else None,
+        )
+        if placed is None:
+            return None
+        fig = plot_section(placed, W, H, dark=True)
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", dpi=150, bbox_inches="tight",
+                    facecolor="none", edgecolor="none")
+        plt.close(fig)
+
+    buf.seek(0)
+    return base64.b64encode(buf.read()).decode()
+
+
+# Keep legacy alias used by /onboarding and /chat (dining-only, 2D)
+def _render(spec: dict) -> str | None:
+    return _render_section(spec, section="dining", view="2D")
 
 
 # ── Request models ────────────────────────────────────────────────────────────
 
 class OnboardingRequest(BaseModel):
     site: dict
-    answers: dict  # keys: occupants, duration, purpose, priority, scale
+    answers: dict
 
 
 class ChatRequest(BaseModel):
     current_spec: dict
     message: str
+    history: list[dict] = []
 
 
 class RenderRequest(BaseModel):
     spec: dict
-    history: list[dict] = []  # list of {role, content}
+    section: str = "dining"
+    view: str = "2D"
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @app.post("/render")
 def render(req: RenderRequest):
-    """Solve + render the current spec without calling the LLM. Used for initial page load."""
-    image_b64 = _render(req.spec)
+    image_b64 = _render_section(req.spec, section=req.section, view=req.view)
     return {"image_b64": image_b64}
 
 
@@ -105,14 +312,16 @@ def render(req: RenderRequest):
 def onboard(req: OnboardingRequest):
     params, err = onboarding_to_spec(req.site, req.answers)
     if params is None:
-        return {"error": err, "spec": None, "image_b64": None, "reply": ""}
+        return {"error": err, "spec": None, "image_b64": None, "reply": "", "suggestions": []}
 
     params.setdefault("corridor_side", "none")
     params.setdefault("corridor_w",    2)
     params.setdefault("seed",          42)
 
-    image_b64 = _render(params)
-    return {"spec": params, "image_b64": image_b64, "reply": ""}
+    image_b64   = _render(params)
+    reply       = _initial_greeting(req.site, req.answers, params)
+    suggestions = _dining_suggestions(params, req.answers)
+    return {"spec": params, "image_b64": image_b64, "reply": reply, "suggestions": suggestions}
 
 
 @app.post("/chat")
@@ -120,8 +329,10 @@ def chat(req: ChatRequest):
     updated, reply = chat_modify_dining(req.current_spec, req.message, req.history)
 
     if updated is None:
-        # clarify or error — return current spec unchanged
         return {"spec": req.current_spec, "reply": reply, "image_b64": None}
 
-    image_b64 = _render(updated)
-    return {"spec": updated, "reply": reply, "image_b64": image_b64}
+    # Merge: current_spec is the base so fields outside the LLM schema
+    # (corridor_side, corridor_w, seed, …) are not silently dropped.
+    merged = {**req.current_spec, **updated}
+    image_b64 = _render(merged)
+    return {"spec": merged, "reply": reply, "image_b64": image_b64}

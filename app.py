@@ -3,10 +3,10 @@ import os
 import streamlit as st
 
 from solver import solve, check_adjacency, check_circuit
-from drawing import plot_section, plot_module_library, plot_plan_view, _SECTION_ZONES
+from drawing import plot_section, plot_module_library, plot_plan_view, _SECTION_ZONES, get_library_by_zone, plot_zone_group
 from dwelling import solve_dwelling_2d, solve_dwelling_3d
 from solver3d import solve3d, check_adjacency_3d, check_circuit_3d
-from viewer3d import plot_section_3d, plot_module_library_3d, plot_slice_2d, plot_dwelling_3d, _draw_module_3d
+from viewer3d import plot_section_3d, plot_module_library_3d, plot_slice_2d, plot_dwelling_3d, _draw_module_3d, get_library_3d_by_zone, plot_zone_group_3d
 from modules3d import MODULES_3D
 import llm
 from llm import chat_modify_dining, onboarding_to_spec
@@ -28,9 +28,34 @@ def _module_library_png(section: str, mtime: float, drawing_mtime: float) -> byt
 
 
 @st.cache_data
+def _zone_group_png(section: str, zone_label: str, n_mods: int,
+                    mtime: float, drawing_mtime: float) -> bytes:
+    import matplotlib.pyplot as plt
+    groups = get_library_by_zone(section)
+    mods = next((m for z, m in groups if z == zone_label), [])
+    fig = plot_zone_group(zone_label, mods)
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=100, bbox_inches="tight")
+    plt.close(fig)
+    return buf.getvalue()
+
+
+@st.cache_data
 def _module_library_3d_png(section: str, mtime: float) -> bytes:
     import matplotlib.pyplot as plt
     fig = plot_module_library_3d(section)
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=80, bbox_inches="tight")
+    plt.close(fig)
+    return buf.getvalue()
+
+
+@st.cache_data
+def _zone_group_3d_png(section: str, zone_label: str, n_mods: int, mtime: float) -> bytes:
+    import matplotlib.pyplot as plt
+    groups = get_library_3d_by_zone(section)
+    mods = next((m for z, m in groups if z == zone_label), [])
+    fig = plot_zone_group_3d(zone_label, mods)
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=80, bbox_inches="tight")
     plt.close(fig)
@@ -686,12 +711,24 @@ with st.sidebar:
         if _to_remove is not None:
             st.session_state.dwelling_functions.pop(_to_remove)
             st.rerun()
-        if st.button("+ Add section", key="dw_add"):
-            st.session_state.dwelling_functions.append(
-                {"type": "dining", "d": 3, "seed": 42, "dining_style": "compact",
-                 "roof_style": "any", "living_combo": "full"}
-            )
-            st.rerun()
+        _btn_add, _btn_reset = st.columns(2)
+        with _btn_add:
+            if st.button("+ Add section", key="dw_add", use_container_width=True):
+                st.session_state.dwelling_functions.append(
+                    {"type": "dining", "d": 3, "seed": 42, "dining_style": "compact",
+                     "roof_style": "any", "living_combo": "full"}
+                )
+                st.rerun()
+        with _btn_reset:
+            if st.button("↺ Reset", key="dw_reset", use_container_width=True):
+                st.session_state.dwelling_functions = [
+                    {"type": "dining",  "d": 3, "seed": 46, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
+                    {"type": "kitchen", "d": 3, "seed": 45, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
+                    {"type": "living",  "d": 3, "seed": 44, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
+                    {"type": "bed",     "d": 3, "seed": 42, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
+                    {"type": "bath",    "d": 3, "seed": 100, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
+                ]
+                st.rerun()
         W = _dw_W  # so H/D block below has a value for W
         roof_style = "any"
     else:  # Bed
@@ -803,23 +840,30 @@ with section_col:
 
     # ── Module Library tab ────────────────────────────────────────────────────
     with tab_lib:
-        if mode == "3D":
-            st.caption(
-                "All module variants at unit scale (1 cell = 1 unit).  "
-                "Red lines = geometry.  Green dots = ports."
-            )
-            _m3d_mtime = os.path.getmtime(_MODULES3D_PATH)
-            st.image(_module_library_3d_png(section_type, _m3d_mtime), use_container_width=True)
-        elif section_type in _SECTION_ZONES:
-            st.caption(
-                "All module variants at unit scale (1 cell = 1 unit).  "
-                "Red lines = geometry.  Green dots = ports.  Coloured fill = zone type."
-            )
-            _mtime  = os.path.getmtime(_MODULES_PATH)
-            _dmtime = os.path.getmtime(_DRAWING_PATH)
-            st.image(_module_library_png(section_type, _mtime, _dmtime), use_container_width=True)
-        else:
-            st.info(f"**{section_type} module library** — modules will be drawn here once confirmed.")
+        _mtime  = os.path.getmtime(_MODULES_PATH)
+        _dmtime = os.path.getmtime(_DRAWING_PATH)
+        _lib_sections = ["Dining", "Kitchen", "Living", "Bed"]
+        for _sec in _lib_sections:
+            with st.expander(_sec, expanded=(_sec == section_type)):
+                if mode == "3D":
+                    _m3d_mtime = os.path.getmtime(_MODULES3D_PATH)
+                    _lib_groups_3d = get_library_3d_by_zone(_sec)
+                    for _zone_label_3d, _zone_mods_3d in _lib_groups_3d:
+                        st.markdown(f"**{_zone_label_3d}**")
+                        st.image(
+                            _zone_group_3d_png(_sec, _zone_label_3d, len(_zone_mods_3d), _m3d_mtime),
+                            use_container_width=True,
+                        )
+                elif _sec in _SECTION_ZONES:
+                    _lib_groups = get_library_by_zone(_sec)
+                    for _zone_label, _zone_mods in _lib_groups:
+                        st.markdown(f"**{_zone_label}**")
+                        st.image(
+                            _zone_group_png(_sec, _zone_label, len(_zone_mods), _mtime, _dmtime),
+                            use_container_width=True,
+                        )
+                else:
+                    st.info(f"**{_sec}** module library — coming soon.")
 
     # ── Section tab ───────────────────────────────────────────────────────────
     with tab_sec:
@@ -1013,6 +1057,30 @@ with section_col:
             with _col_plan:
                 st.caption("Plan view")
                 st.pyplot(plot_plan_view(_dw_sections, _dw_corridor_side, _dw_corridor_w))
+
+            # ── Section picker — click to jump to that section's editor ──────
+            st.markdown("**Edit a section:**")
+            _jump_cols = st.columns(len(_dw_sections))
+            for _ci, (_sc, _col) in enumerate(zip(_dw_sections, _jump_cols)):
+                with _col:
+                    _label = _sc["type"].capitalize()
+                    _ok    = _sc["placed"] is not None
+                    if st.button(
+                        _label if _ok else f"{_label} ✗",
+                        key=f"dw_jump_{_ci}",
+                        use_container_width=True,
+                        disabled=not _ok,
+                        type="primary" if _ok else "secondary",
+                    ):
+                        st.session_state["_jump_section"] = _sc["type"].capitalize()
+                        st.rerun()
+
+            # Apply jump if requested
+            if "_jump_section" in st.session_state:
+                _jump = st.session_state.pop("_jump_section")
+                _valid = ["Dining", "Kitchen", "Living", "Bed", "Bath"]
+                if _jump in _valid:
+                    st.info(f"→ Use the **Section** radio above to switch to **{_jump}**.")
 
         else:  # Bed
             with st.spinner("Solving…"):

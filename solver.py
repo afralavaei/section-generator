@@ -737,8 +737,26 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
 
     if section != "living":
         table_mods = _TABLE_COMPACT if dining_style == "compact" else _TABLE_SPACIOUS
+        _h_rule = "first 2" if dining_style == "compact" else "first 3"
         active_zones = [
             {**z, "modules": table_mods} if z.get("id") == "table" else z
+            for z in active_zones
+        ]
+        _tag_h = {
+            "tall_furniture": "first 3", "low_furniture": "first 2",
+            "tall_chairs":    "first 3", "low_chairs":    "first 2",
+            "tall_table":     "first 3", "low_table":     "first 2",
+        }
+        _tags = preferred_tags or []
+        _chair_rule = next((_tag_h[t] for t in _tags
+                            if t in {"tall_furniture","low_furniture","tall_chairs","low_chairs"}),
+                           _h_rule)
+        _table_rule = next((_tag_h[t] for t in _tags
+                            if t in {"tall_furniture","low_furniture","tall_table","low_table"}),
+                           _h_rule)
+        active_zones = [
+            {**z, "y_rule": [_chair_rule]} if z.get("id") in ("chair_left", "chair_right") else
+            {**z, "y_rule": [_table_rule]} if z.get("id") == "table" else z
             for z in active_zones
         ]
 
@@ -759,7 +777,9 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
                     by_h.setdefault(sh, []).append(mid)
             if not by_h:
                 return None
-            shelf_h = rng.choice(list(by_h.keys()))
+            # Pin shelf height to 2 for all dining styles. Keeps 2D/3D structurally aligned.
+            # (compact vs spacious is expressed in furniture height, not the shelf.)
+            shelf_h = 2 if 2 in by_h else rng.choice(list(by_h.keys()))
             shelf_mid = rng.choice(by_h[shelf_h])
             if inner_W >= 6:
                 x_post = float(inner_W) - 0.5 if corridor == "corridor_right" else float(corridor_w) + 0.5

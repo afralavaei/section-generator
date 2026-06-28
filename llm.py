@@ -75,7 +75,7 @@ DINING_SCHEMA = {
         "action":         {"type": "string",  "enum": ["update", "clarify"]},
         "dining_style":   {"type": "string",  "enum": ["compact", "spacious"]},
         "num_chairs":     {"type": "integer", "minimum": 1, "maximum": 2},
-        "h":              {"type": "integer", "minimum": 7, "maximum": 11},
+        "h":              {"type": "integer", "minimum": 7, "maximum": 8},
         "d":              {"type": "integer", "minimum": 2, "maximum": 9},
         "roof_style":     {"type": "string",  "enum": ["any", "plain", "divided", "pitched"]},
         "preferred_tags": {"type": "array",   "items": {"type": "string"}},
@@ -191,8 +191,9 @@ def _apply_corridor_changes(msg: str, current: dict, params: dict) -> dict:
 
 _SHELF_TAGS = {"more_shelves", "wide_shelves"}
 _ROOF_KW: dict = {
-    "more_shelves": ["more shelves", "lots of shelves", "more storage overhead",
-                     "more divisions", "many shelves", "extra shelves"],
+    "more_shelves": ["shelves", "add shelves", "want shelves", "i want shelf",
+                     "more shelves", "lots of shelves", "more storage overhead",
+                     "more divisions", "many shelves", "extra shelves", "some shelves"],
     "wide_shelves": ["wide shelves", "big shelves", "deep shelves",
                      "generous shelving", "wider shelves"],
     "divided":      ["shelves above", "storage overhead", "divided ceiling",

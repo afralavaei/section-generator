@@ -605,6 +605,76 @@ MODULES: Dict[str, dict] = {
 
     #-------Sofa_Modules_(Living)---------------------------------------------
 
+    "sofa_h3_v4": {
+        "id": "sofa_h3_v4",
+        "w": 4, "h": 3,
+        "zone": "sofa",
+        "description": "Sofa v4, w=4 h=3 -- organic curved shape with rounded armrests. 2D front face of sofa_h3_v4_3d.",
+        "tags": ["sofa", "h3", "living", "organic", "curved", "w4"],
+        "segments": [
+            # front face main arc
+            [(1.124,1.111),(1.251,0.740),(1.579,0.521),(1.979,0.5),(2.380,0.5),(2.781,0.507),(3.131,0.689),(3.298,1.046),(3.302,1.448),(3.302,1.849),(3.281,2.249),(3.062,2.577),(2.689,2.704)],
+            # upper-left arc
+            [(0.5,2.090),(0.536,2.298),(0.640,2.481),(0.800,2.618),(0.997,2.692),(1.208,2.704),(1.419,2.704),(1.631,2.704),(1.842,2.704),(2.054,2.704),(2.265,2.704),(2.477,2.704),(2.689,2.704)],
+            # top stem
+            [(0.5,2.090),(0.5,3.0)],
+            # right exit
+            [(2.689,0.5),(4.0,0.5)],
+            # closing: lower-left straight (mirrors back face arc endpoint)
+            [(1.124,1.111),(1.738,0.5)],
+            # closing: floor line
+            [(1.738,0.5),(2.689,0.5)],
+        ],
+        "ports": {
+            "top":    [(0.5, 3.0)],
+            "bottom": [],
+            "left":   [],
+            "right":  [(4.0, 0.5)],
+        },
+    },
+
+    "sofa_h3_v3": {
+        "id": "sofa_h3_v3",
+        "w": 3, "h": 3,
+        "zone": "sofa",
+        "description": "Sofa v3, w=3 h=3 -- rounded hexagonal profile with curved backrest. 2D front face of sofa_h3_v3_3d.",
+        "tags": ["sofa", "h3", "living", "rounded", "curved"],
+        "segments": [
+            [(0.5,0.5),(0.5,1.5),(1.0,2.0),(2.0,2.0),(2.5,1.5),(2.5,0.5),(0.5,0.5)],
+            [(0.5,2.5),(1.0,1.5),(2.5,1.5)],
+            [(2.5,0.5),(3.0,0.5)],
+            [(0.5,2.5),(0.5,3.0)],
+        ],
+        "ports": {
+            "top":    [(0.5, 3.0)],
+            "bottom": [],
+            "left":   [],
+            "right":  [(3.0, 0.5)],
+        },
+    },
+
+    "sofa_h3_v2": {
+        "id": "sofa_h3_v2",
+        "w": 3, "h": 3,
+        "zone": "sofa",
+        "description": "Sofa v2, w=3 h=3 -- diagonal backrest with cross-rail. 2D front face of sofa_h3_v2_3d.",
+        "tags": ["sofa", "h3", "living", "diagonal", "native"],
+        "segments": [
+            [(0.5, 3.0), (0.5, 2.5)],
+            [(0.5, 0.5), (2.5, 0.5), (2.5, 1.5)],
+            [(2.5, 1.5), (0.5, 1.5)],
+            [(0.5, 1.5), (0.5, 2.5)],
+            [(0.5, 0.5), (1.5, 2.5), (0.5, 2.5)],
+            [(2.5, 0.5), (3.0, 0.5)],
+        ],
+        "ports": {
+            "top":    [(0.5, 3.0)],
+            "bottom": [],
+            "left":   [],
+            "right":  [(3.0, 0.5)],
+        },
+    },
+
     "sofa_h3_v1": {
         "id": "sofa_h3_v1",
         "w": 3, "h": 3,
@@ -1035,26 +1105,60 @@ MODULES: Dict[str, dict] = {
     # w=4: fills the full inner zone so the right port connects directly to
     # the corridor (no filler gap between bed and corridor).
     "bed_v1": {
-        "id": "bed_v1", "w": 4, "h": 3, "zone": "bed",
-        "description": "Bed, 4 wide × 3 tall — narrow headboard stem and mattress body with right exit.",
-        "tags": ["bed", "h3", "narrow-headboard"],
+        "id": "bed_v1", "w": 3, "h": 2, "zone": "bed",
+        "description": "Compact single bed, 80cm wide — front view cross-section with headboard and right corridor exit.",
+        "tags": ["bed", "single", "compact", "80cm", "front-view"],
         "segments": [
-            [(0.5, 3.0), (0.5, 2.5)],
-            [(0.5, 2.5), (3.0, 2.5), (3.0, 0.5), (1.5, 0.5), (0.5, 0.5), (0.5, 2.5)],
-            [(1.5, 0.5), (4.0, 0.5)],
+            [(0.5, 2.0), (0.5, 1.5)],
+            [(0.5, 1.5), (2.5, 1.5), (2.5, 0.5), (2.5, 0.5), (0.5, 0.5), (0.5, 1.5)],
+            [(2.5, 0.5), (3.0, 0.5)],
         ],
-        "ports": {"top": [(0.5, 3.0)], "right": [(4.0, 0.5)], "bottom": [], "left": []},
+        "ports": {"top": [(0.5, 2.0)], "right": [(3.0, 0.5)], "bottom": [], "left": []},
     },
     "bed_v2": {
-        "id": "bed_v2", "w": 4, "h": 3, "zone": "bed",
-        "description": "Bed, 4 wide × 3 tall — wider headboard body with right exit.",
-        "tags": ["bed", "h3", "wide-headboard"],
+        "id": "bed_v2", "w": 3, "h": 2, "zone": "bed",
+        "description": "Spacious single bed, 100cm wide — front view cross-section with headboard and right corridor exit.",
+        "tags": ["bed", "single", "spacious", "100cm", "front-view"],
         "segments": [
-            [(0.5, 3.0), (0.5, 2.5)],
-            [(0.5, 2.5), (3.5, 2.5), (3.5, 0.5), (2.0, 0.5), (0.5, 0.5), (0.5, 2.5)],
-            [(2.0, 0.5), (4.0, 0.5)],
+            [(0.5, 2.0), (0.5, 1.5)],
+            [(0.5, 1.5), (3.0, 1.5), (3.0, 0.5), (0.5, 0.5), (0.5, 1.5)],
+            
         ],
-        "ports": {"top": [(0.5, 3.0)], "right": [(4.0, 0.5)], "bottom": [], "left": []},
+        "ports": {"top": [(0.5, 2.0)], "right": [(3.0, 0.5)], "bottom": [], "left": []},
+    },
+    "bed_v3": {
+        "id": "bed_v3", "w": 4, "h": 2, "zone": "bed",
+        "description": "Queen bed, 120cm wide — front view cross-section with headboard and right corridor exit.",
+        "tags": ["bed", "queen", "120cm", "front-view"],
+        "segments": [
+            [(0.5, 2.0), (0.5, 1.5)],
+            [(0.5, 1.5), (3.5, 1.5), (3.5, 0.5), (0.5, 0.5), (0.5, 1.5)],
+        
+            [(3.5, 0.5), (4.0, 0.5)],
+        ],
+        "ports": {"top": [(0.5, 2.0)], "right": [(4.0, 0.5)], "bottom": [], "left": []},
+    },
+    "bed_v4": {
+        "id": "bed_v4", "w": 5, "h": 2, "zone": "bed",
+        "description": "King bed, 160cm wide — front view cross-section with headboard and right corridor exit.",
+        "tags": ["bed", "king", "160cm", "front-view"],
+        "segments": [
+            [(0.5, 2.0), (0.5, 1.5)],
+            [(0.5, 1.5), (4.5, 1.5), (4.5, 0.5), (0.5, 0.5), (0.5, 1.5)],
+            [(5.0, 0.5), (4.5, 0.5)],
+        ],
+        "ports": {"top": [(0.5, 2.0)], "right": [(5.0, 0.5)], "bottom": [], "left": []},
+    },
+    "bed_v5": {
+        "id": "bed_v5", "w": 6, "h": 2, "zone": "bed",
+        "description": "Bed side view — 2D lateral cross-section shared by all 4 bed width variants.",
+        "tags": ["bed", "side-view"],
+        "segments": [
+            [(0.5, 2.0), (0.5, 1.5)],
+            [(0.5, 1.5), (5.5, 1.5), (5.5, 0.5), (0.5, 0.5), (0.5, 1.5)],
+            [(6.0, 0.5), (5.5, 0.5)],
+        ],
+        "ports": {"top": [(0.5, 2.0)], "right": [(6.0, 0.5)], "bottom": [], "left": []},
     },
 
     # ── 1×1 filler tiles ──────────────────────────────────────────────────────
@@ -1261,6 +1365,14 @@ ZONES_FULL_ROOF_CORR_LEFT_1CHAIR = [
     ZONES[2],                            # chair_right at "last 2"
 ]
 
+# No-corridor 1-chair variant: chair_left + table + shelf, table shifted to "last 2"
+# so chair and table don't share columns (needed when inner_W < 6, e.g. W=4 solo).
+ZONES_1CHAIR = [
+    ZONES[0],                            # chair_left at "first 2"
+    {**ZONES[1], "x_rule": ["last 2"]},  # table at "last 2"
+    ZONES[3],                            # shelf at "full"
+]
+
 # ── Table module groups ───────────────────────────────────────────────────────
 # Compact (no wide-top): chairs flush against table, dining zone = 6 cols.
 # Spacious (wide-top):   1-col filler gap each side, dining zone = 8 cols.
@@ -1410,8 +1522,8 @@ _TV_CORR_R      = [m for m in MODULES if m.startswith("tv_table_corr_")]
 
 LIVING_ZONES = [
     {
-        "id": "sofa", "x_rule": ["first 3", "first 2"], "y_rule": ["first 3", "first 2"],
-        "modules": ["sofa_h3_v1"],
+        "id": "sofa", "x_rule": ["first 4", "first 3", "first 2"], "y_rule": ["first 3", "first 2"],
+        "modules": ["sofa_h3_v4", "sofa_h3_v3", "sofa_h3_v2", "sofa_h3_v1"],
     },
     {
         "id": "table", "x_rule": ["middle 2"], "y_rule": ["first 2"],
@@ -1490,7 +1602,9 @@ LIVING_ZONES_SOFA_TV_INNER_CORR_RIGHT = [
 # ── Bed zone configuration ────────────────────────────────────────────────────
 # Shelf is always pre-placed by the solver; only the bed zone is solved here.
 BED_ZONES_INNER = [
-    {"id": "bed", "x_rule": ["first 4"], "y_rule": ["first 3"], "modules": ["bed_v1", "bed_v2"]},
+    {"id": "bed", "x_rule": ["first 6", "first 5", "first 4", "first 3"],
+     "y_rule": ["first 2"],
+     "modules": ["bed_v1", "bed_v2", "bed_v3", "bed_v4", "bed_v5"]},
 ]
 
 # Used by drawing.py to order zones in the module library view

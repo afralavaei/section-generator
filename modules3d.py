@@ -7,6 +7,7 @@ New modules are defined by calling _lift2d() at import time on 2D segment data.
 This produces explicit static 3D coordinates (not lazy-computed at render time).
 """
 from typing import Dict
+from functools import lru_cache
 
 FACES_3D = ("left", "right", "bottom", "top", "front", "back")
 
@@ -858,6 +859,120 @@ MODULES_3D.update({
 
     # ── Sofa (Living) ─────────────────────────────────────────────────────────
 
+    "sofa_h3_v4_3d": {
+        "id": "sofa_h3_v4_3d", "w": 4, "h": 3, "d": 3,
+        "zone": "sofa",
+        "scalable_d": False,
+        "description": "Sofa v4, w=4 h=3 d=3 -- native 3D organic curved shape with rounded armrests.",
+        "tags": ["sofa", "h3", "living", "native-3d", "organic", "curved", "w4"],
+        "segments": [
+            # arm profile arc at x=1.124 (spans full depth)
+            [(1.124,1.111,0.5),(1.124,1.348,0.524),(1.124,1.570,0.608),(1.124,1.721,0.785),(1.124,1.725,1.023),(1.124,1.725,1.261),(1.124,1.725,1.5),(1.124,1.725,1.738),(1.124,1.725,1.977),(1.124,1.721,2.215),(1.124,1.570,2.391),(1.124,1.348,2.475),(1.124,1.111,2.5)],
+            # front face main arc (z=0.5)
+            [(1.124,1.111,0.5),(1.251,0.740,0.5),(1.579,0.521,0.5),(1.979,0.5,0.5),(2.380,0.5,0.5),(2.781,0.507,0.5),(3.131,0.689,0.5),(3.298,1.046,0.5),(3.302,1.448,0.5),(3.302,1.849,0.5),(3.281,2.249,0.5),(3.062,2.577,0.5),(2.689,2.704,0.5)],
+            # back face floor line (z=2.5)
+            [(1.738,0.5,2.5),(2.689,0.5,2.5)],
+            # back face lower-left arc (z=2.5)
+            [(1.124,1.114,2.5),(1.129,1.033,2.5),(1.145,0.955,2.5),(1.171,0.879,2.5),(1.206,0.807,2.5),(1.251,0.740,2.5),(1.304,0.680,2.5),(1.364,0.627,2.5),(1.431,0.582,2.5),(1.503,0.547,2.5),(1.579,0.521,2.5),(1.657,0.505,2.5),(1.738,0.5,2.5)],
+            # depth rail at x=3.302, y=1.725
+            [(3.302,1.725,0.5),(3.302,1.725,2.5)],
+            # back face right exit (z=2.5)
+            [(2.689,0.5,2.5),(4.0,0.5,2.5)],
+            # back face upper-right arc (z=2.5)
+            [(3.302,2.090,2.5),(3.297,2.170,2.5),(3.281,2.249,2.5),(3.255,2.325,2.5),(3.220,2.397,2.5),(3.175,2.464,2.5),(3.122,2.524,2.5),(3.062,2.577,2.5),(2.995,2.622,2.5),(2.923,2.657,2.5),(2.847,2.683,2.5),(2.769,2.698,2.5),(2.689,2.704,2.5)],
+            # back face right vertical (z=2.5)
+            [(3.302,1.114,2.5),(3.302,2.090,2.5)],
+            # back face lower-right arc (z=2.5)
+            [(2.689,0.5,2.5),(2.769,0.505,2.5),(2.847,0.521,2.5),(2.923,0.547,2.5),(2.995,0.582,2.5),(3.062,0.627,2.5),(3.122,0.680,2.5),(3.175,0.740,2.5),(3.220,0.807,2.5),(3.255,0.879,2.5),(3.281,0.955,2.5),(3.297,1.033,2.5),(3.302,1.114,2.5)],
+            # back face top stem
+            [(0.5,2.090,2.5),(0.5,3.0,2.5)],
+            # back face upper-left arc (z=2.5)
+            [(0.5,2.090,2.5),(0.536,2.298,2.5),(0.640,2.481,2.5),(0.800,2.618,2.5),(0.997,2.692,2.5),(1.208,2.704,2.5),(1.419,2.704,2.5),(1.631,2.704,2.5),(1.842,2.704,2.5),(2.054,2.704,2.5),(2.265,2.704,2.5),(2.477,2.704,2.5),(2.689,2.704,2.5)],
+            # side arc at y=2.704 connecting front and back
+            [(1.461,2.704,2.5),(1.225,2.704,2.475),(1.002,2.704,2.391),(0.852,2.704,2.215),(0.848,2.704,1.977),(0.848,2.704,1.738),(0.848,2.704,1.5),(0.848,2.704,1.261),(0.848,2.704,1.023),(0.852,2.704,0.785),(1.002,2.704,0.608),(1.225,2.704,0.524),(1.461,2.704,0.5)],
+            # front face upper-left arc (z=0.5)
+            [(0.5,2.090,0.5),(0.536,2.298,0.5),(0.640,2.481,0.5),(0.800,2.618,0.5),(0.997,2.692,0.5),(1.208,2.704,0.5),(1.419,2.704,0.5),(1.631,2.704,0.5),(1.842,2.704,0.5),(2.054,2.704,0.5),(2.265,2.704,0.5),(2.477,2.704,0.5),(2.689,2.704,0.5)],
+            # front face top stem
+            [(0.5,2.090,0.5),(0.5,3.0,0.5)],
+            # front face right exit
+            [(2.689,0.5,0.5),(4.0,0.5,0.5)],
+        ],
+        "ports": {
+            "top":    [(0.5, 3.0, 0.5), (0.5, 3.0, 2.5)],
+            "right":  [(4.0, 0.5, 0.5), (4.0, 0.5, 2.5)],
+            "bottom": [], "left": [], "front": [], "back": [],
+        },
+    },
+
+    "sofa_h3_v3_3d": {
+        "id": "sofa_h3_v3_3d", "w": 3, "h": 3, "d": 3,
+        "zone": "sofa",
+        "scalable_d": False,
+        "description": "Sofa v3, w=3 h=3 d=3 -- native 3D with rounded hexagonal profile and curved backrest.",
+        "tags": ["sofa", "h3", "living", "native-3d", "rounded", "curved"],
+        "segments": [
+            # front face (z=0.5): hexagonal sofa outline
+            [(0.5,0.5,0.5),(0.5,1.5,0.5),(1.0,2.0,0.5),(2.0,2.0,0.5),(2.5,1.5,0.5),(2.5,0.5,0.5),(0.5,0.5,0.5)],
+            # front face: backrest curve
+            [(0.5,2.5,0.5),(1.0,1.5,0.5),(2.5,1.5,0.5)],
+            # right exit front
+            [(2.5,0.5,0.5),(3.0,0.5,0.5)],
+            # top port stem front
+            [(0.5,2.5,0.5),(0.5,3.0,0.5)],
+            # back face (z=2.5): same hexagonal outline
+            [(0.5,0.5,2.5),(0.5,1.5,2.5),(1.0,2.0,2.5),(2.0,2.0,2.5),(2.5,1.5,2.5),(2.5,0.5,2.5),(0.5,0.5,2.5)],
+            # back face: backrest curve
+            [(0.5,2.5,2.5),(1.0,1.5,2.5),(2.5,1.5,2.5)],
+            # right exit back
+            [(2.5,0.5,2.5),(3.0,0.5,2.5)],
+            # top port stem back
+            [(0.5,2.5,2.5),(0.5,3.0,2.5)],
+            # depth rails
+            [(2.5,1.5,0.5),(2.5,1.5,2.5)],
+            [(1.0,1.5,0.5),(1.0,1.5,2.5)],
+            [(0.5,2.5,0.5),(0.5,2.5,2.5)],
+        ],
+        "ports": {
+            "top":    [(0.5, 3.0, 0.5), (0.5, 3.0, 2.5)],
+            "right":  [(3.0, 0.5, 0.5), (3.0, 0.5, 2.5)],
+            "bottom": [], "left": [], "front": [], "back": [],
+        },
+    },
+
+    "sofa_h3_v2_3d": {
+        "id": "sofa_h3_v2_3d", "w": 3, "h": 3, "d": 3,
+        "zone": "sofa",
+        "scalable_d": False,
+        "description": "Sofa v2, w=3 h=3 d=3 -- native 3D with diagonal profile and cross-rails.",
+        "tags": ["sofa", "h3", "living", "native-3d", "diagonal"],
+        "segments": [
+            # right exit front (y=0.5, z=0.5)
+            [(2.5, 0.5, 0.5), (3.0, 0.5, 0.5)],
+            # front bottom: horizontal then rising
+            [(0.5, 0.5, 0.5), (2.5, 0.5, 0.5), (2.5, 1.5, 0.5)],
+            # front cross-rail at h=1.5
+            [(2.5, 1.5, 0.5), (0.5, 1.5, 0.5)],
+            # diagonal from front to back + top port stem
+            [(0.5, 0.5, 0.5), (1.5, 2.5, 0.5), (0.5, 2.5, 0.5), (0.5, 3.0, 0.5)],
+            # right exit back (y=0.5, z=2.5)
+            [(2.5, 0.5, 2.5), (3.0, 0.5, 2.5)],
+            # back face path (z=2.5)
+            [(0.5, 3.0, 2.5), (0.5, 2.5, 2.5), (1.5, 2.5, 2.5),
+             (0.5, 0.5, 2.5), (2.5, 0.5, 2.5), (2.5, 1.5, 2.5), (0.5, 1.5, 2.5)],
+            # depth rail at h=1.5, x=2.5
+            [(2.5, 1.5, 0.5), (2.5, 1.5, 2.5)],
+            # depth rail at h=1.5, x=0.5
+            [(0.5, 1.5, 0.5), (0.5, 1.5, 2.5)],
+            # depth rail at h=2.5, x=0.5
+            [(0.5, 2.5, 0.5), (0.5, 2.5, 2.5)],
+        ],
+        "ports": {
+            "top":    [(0.5, 3.0, 0.5), (0.5, 3.0, 2.5)],
+            "right":  [(3.0, 0.5, 0.5), (3.0, 0.5, 2.5)],
+            "bottom": [], "left": [], "front": [], "back": [],
+        },
+    },
+
     "sofa_h3_v1_3d": {
         "id": "sofa_h3_v1_3d", "w": 3, "h": 3, "d": 3,
         "zone": "sofa",
@@ -871,20 +986,6 @@ MODULES_3D.update({
             [(2.5, 0.5), (3.0, 0.5)],
         ], ex={(0.5, 3.0), (3.0, 0.5)}),
         "ports": _ports_lift({"top": [(0.5, 3.0)], "bottom": [], "left": [], "right": [(3.0, 0.5)]}),
-    },
-
-    "sofa_h3_v2_3d": {
-        "id": "sofa_h3_v2_3d", "w": 2, "h": 3, "d": 3,
-        "zone": "sofa",
-        "scalable_d": True,
-        "description": "Sofa h=3 w=2, compact version for smaller living sections.",
-        "tags": ["lifted", "sofa", "h3", "living", "compact"],
-        "segments": _lift2d([
-            [(0.5, 3.0), (0.5, 2.5)],
-            [(0.5, 2.5), (0.5, 0.5), (1.5, 0.5), (1.5, 2.5), (0.5, 2.5)],
-            [(1.5, 0.5), (2.0, 0.5)],
-        ], ex={(0.5, 3.0), (2.0, 0.5)}),
-        "ports": _ports_lift({"top": [(0.5, 3.0)], "bottom": [], "left": [], "right": [(2.0, 0.5)]}),
     },
 
 })
@@ -919,13 +1020,19 @@ def get_segments_3d(mod: dict, w: int, h: int, d: int) -> list:
     return segs
 
 
-def get_ports_3d(mod: dict, w: int, h: int, d: int) -> dict:
+@lru_cache(maxsize=512)
+def _get_ports_3d_cached(mod_id: str, w: int, h: int, d: int) -> dict:
+    mod = MODULES_3D[mod_id]
     if "whd_ports_fn" in mod:
         return mod["whd_ports_fn"](w, h, d)
     ports = mod.get("ports", {face: [] for face in FACES_3D})
     if mod.get("scalable_d") and d != mod.get("d", 3):
         return _scale_ports_d(ports, mod.get("d", 3), d)
     return ports
+
+
+def get_ports_3d(mod: dict, w: int, h: int, d: int) -> dict:
+    return _get_ports_3d_cached(mod["id"], w, h, d)
 
 
 # ── Zone definitions ──────────────────────────────────────────────────────────
@@ -1280,6 +1387,14 @@ ZONES_3D_FULL_ROOF_CORR_LEFT_1CHAIR = [
     ZONES_3D_CORR_LEFT[2],   # chair_right at "last 2"
 ]
 
+# No-corridor 1-chair variant: chair_left + table + shelf, table at "last 2"
+# so volumes don't overlap when inner_W < 6 (e.g. W=4 solo compact).
+ZONES_3D_1CHAIR = [
+    ZONES_3D[0],                             # chair_left at "first 2"
+    {**ZONES_3D[1], "x_rule": ["last 2"]},   # table at "last 2"
+    ZONES_3D[3],                             # shelf at "full"
+]
+
 FILLER_IDS_3D = ["filler_empty_3d", "filler_pass_v_3d", "filler_pass_h_3d",
                   "filler_corner_tr_3d", "filler_corner_tl_3d"]
 
@@ -1520,10 +1635,10 @@ _LIVING_SHELF_3D = [
 LIVING_ZONES_3D = [
     {
         "id":      "sofa",
-        "x_rule":  ["first 3", "first 2"],
+        "x_rule":  ["first 4", "first 3", "first 2"],
         "y_rule":  ["first 3", "first 2"],
         "z_rule":  ["full"],
-        "modules": ["sofa_h3_v1_3d", "sofa_h3_v2_3d"],
+        "modules": ["sofa_h3_v4_3d", "sofa_h3_v3_3d", "sofa_h3_v2_3d", "sofa_h3_v1_3d"],
     },
     {
         "id":      "table",
@@ -1556,45 +1671,139 @@ _LZ3_SHELF = LIVING_ZONES_3D[3]
 LIVING_ZONES_SOFA_TV_3D    = [_LZ3_SOFA, _LZ3_TV,    _LZ3_SHELF]
 
 # ── Bed 3D modules ────────────────────────────────────────────────────────────
+# All beds: d=5, front profile at z=0.5, back at z=4.5
+# Port coords match the 2D modules exactly.
 
 def _bed_v1_segs_3d(w, h, d):
     return _lift2d([
-        [(0.5, 3.0), (0.5, 2.5)],
-        [(0.5, 2.5), (3.0, 2.5), (3.0, 0.5), (1.5, 0.5), (0.5, 0.5), (0.5, 2.5)],
-        [(1.5, 0.5), (4.0, 0.5)],
-    ], d=d, ex={(0.5, 3.0), (4.0, 0.5)})
+        [(0.5, 2.0), (0.5, 1.5)],
+        [(0.5, 1.5), (2.5, 1.5), (2.5, 0.5), (2.5, 0.5), (0.5, 0.5), (0.5, 1.5)],
+        [(2.5, 0.5), (3.0, 0.5)],
+    ], d=d, ex={(0.5, 2.0), (3.0, 0.5)})
+
+def _bed_v1_ports_3d(w, h, d):
+    return _ports_lift({"top": [(0.5, 2.0)], "right": [(3.0, 0.5)], "bottom": [], "left": []}, d=d)
+
 
 def _bed_v2_segs_3d(w, h, d):
     return _lift2d([
-        [(0.5, 3.0), (0.5, 2.5)],
-        [(0.5, 2.5), (3.5, 2.5), (3.5, 0.5), (2.0, 0.5), (0.5, 0.5), (0.5, 2.5)],
-        [(2.0, 0.5), (4.0, 0.5)],
-    ], d=d, ex={(0.5, 3.0), (4.0, 0.5)})
+        [(0.5, 2.0), (0.5, 1.5)],
+        [(0.5, 1.5), (3.0, 1.5), (3.0, 0.5), (0.5, 0.5), (0.5, 1.5)],
+    ], d=d, ex={(0.5, 2.0), (3.0, 0.5)})
 
-def _bed_ports_3d(w, h, d):
-    return _ports_lift({"top": [(0.5, 3.0)], "right": [(4.0, 0.5)], "bottom": [], "left": []}, d=d)
+def _bed_v2_ports_3d(w, h, d):
+    return _ports_lift({"top": [(0.5, 2.0)], "right": [(3.0, 0.5)], "bottom": [], "left": []}, d=d)
+
+
+def _bed_v3_segs_3d(w, h, d):
+    return _lift2d([
+        [(0.5, 2.0), (0.5, 1.5)],
+        [(0.5, 1.5), (3.5, 1.5), (3.5, 0.5), (0.5, 0.5), (0.5, 1.5)],
+        [(3.5, 0.5), (4.0, 0.5)],
+    ], d=d, ex={(0.5, 2.0), (4.0, 0.5)})
+
+def _bed_v3_ports_3d(w, h, d):
+    return _ports_lift({"top": [(0.5, 2.0)], "right": [(4.0, 0.5)], "bottom": [], "left": []}, d=d)
+
+
+def _bed_v4_segs_3d(w, h, d):
+    return _lift2d([
+        [(0.5, 2.0), (0.5, 1.5)],
+        [(0.5, 1.5), (4.5, 1.5), (4.5, 0.5), (0.5, 0.5), (0.5, 1.5)],
+        [(5.0, 0.5), (4.5, 0.5)],
+    ], d=d, ex={(0.5, 2.0), (5.0, 0.5)})
+
+def _bed_v4_ports_3d(w, h, d):
+    return _ports_lift({"top": [(0.5, 2.0)], "right": [(5.0, 0.5)], "bottom": [], "left": []}, d=d)
+
 
 MODULES_3D.update({
     "bed_v1_3d": {
-        "id": "bed_v1_3d", "w": 4, "h": 3, "d": 3, "zone": "bed",
+        "id": "bed_v1_3d", "w": 3, "h": 2, "d": 6, "zone": "bed",
         "scalable_d": True,
-        "description": "Bed, 4 wide × 3 tall — narrow headboard with mattress body and right exit.",
-        "tags": ["bed", "h3", "narrow-headboard"],
+        "description": "Compact single bed, 80cm wide — front view, depth 5 units.",
+        "tags": ["bed", "single", "compact", "80cm", "front-view"],
         "whd_segments_fn": _bed_v1_segs_3d,
-        "whd_ports_fn":    _bed_ports_3d,
+        "whd_ports_fn":    _bed_v1_ports_3d,
     },
     "bed_v2_3d": {
-        "id": "bed_v2_3d", "w": 4, "h": 3, "d": 3, "zone": "bed",
+        "id": "bed_v2_3d", "w": 3, "h": 2, "d": 6, "zone": "bed",
         "scalable_d": True,
-        "description": "Bed, 4 wide × 3 tall — wider headboard body with right exit.",
-        "tags": ["bed", "h3", "wide-headboard"],
+        "description": "Spacious single bed, 100cm wide — front view, depth 5 units.",
+        "tags": ["bed", "single", "spacious", "100cm", "front-view"],
         "whd_segments_fn": _bed_v2_segs_3d,
-        "whd_ports_fn":    _bed_ports_3d,
+        "whd_ports_fn":    _bed_v2_ports_3d,
+    },
+    "bed_v3_3d": {
+        "id": "bed_v3_3d", "w": 4, "h": 2, "d": 6, "zone": "bed",
+        "scalable_d": True,
+        "description": "Queen bed, 120cm wide — front view, depth 5 units.",
+        "tags": ["bed", "queen", "120cm", "front-view"],
+        "whd_segments_fn": _bed_v3_segs_3d,
+        "whd_ports_fn":    _bed_v3_ports_3d,
+    },
+    "bed_v4_3d": {
+        "id": "bed_v4_3d", "w": 5, "h": 2, "d": 6, "zone": "bed",
+        "scalable_d": True,
+        "description": "King bed, 160cm wide — front view, depth 5 units.",
+        "tags": ["bed", "king", "160cm", "front-view"],
+        "whd_segments_fn": _bed_v4_segs_3d,
+        "whd_ports_fn":    _bed_v4_ports_3d,
+    },
+})
+
+# ── Bed v5 3D modules (side-view, 4 depth variants) ──────────────────────────
+# bed_v5 is the side-view 2D cross-section; depth encodes bed width.
+
+def _bed_v5_segs_3d(w, h, d):
+    return _lift2d([
+        [(0.5, 2.0), (0.5, 1.5)],
+        [(0.5, 1.5), (5.5, 1.5), (5.5, 0.5), (0.5, 0.5), (0.5, 1.5)],
+        [(6.0, 0.5), (5.5, 0.5)],
+    ], d=d, ex={(0.5, 2.0), (6.0, 0.5)})
+
+def _bed_v5_ports_3d(w, h, d):
+    return _ports_lift({"top": [(0.5, 2.0)], "right": [(6.0, 0.5)], "bottom": [], "left": []}, d=d)
+
+MODULES_3D.update({
+    "bed_v5_3d_v1": {
+        "id": "bed_v5_3d_v1", "w": 6, "h": 2, "d": 3, "zone": "bed",
+        "scalable_d": False,
+        "description": "Bed side view, depth 3 (z 0.5-2.5) -- compact single width.",
+        "tags": ["bed", "side-view", "d3"],
+        "whd_segments_fn": _bed_v5_segs_3d,
+        "whd_ports_fn":    _bed_v5_ports_3d,
+    },
+    "bed_v5_3d_v2": {
+        "id": "bed_v5_3d_v2", "w": 6, "h": 2, "d": 3.5, "zone": "bed",
+        "scalable_d": False,
+        "description": "Bed side view, depth 3.5 (z 0.5-3.0) -- spacious single width.",
+        "tags": ["bed", "side-view", "d3.5"],
+        "whd_segments_fn": _bed_v5_segs_3d,
+        "whd_ports_fn":    _bed_v5_ports_3d,
+    },
+    "bed_v5_3d_v3": {
+        "id": "bed_v5_3d_v3", "w": 6, "h": 2, "d": 4, "zone": "bed",
+        "scalable_d": False,
+        "description": "Bed side view, depth 4 (z 0.5-3.5) -- queen width.",
+        "tags": ["bed", "side-view", "d4"],
+        "whd_segments_fn": _bed_v5_segs_3d,
+        "whd_ports_fn":    _bed_v5_ports_3d,
+    },
+    "bed_v5_3d_v4": {
+        "id": "bed_v5_3d_v4", "w": 6, "h": 2, "d": 5, "zone": "bed",
+        "scalable_d": False,
+        "description": "Bed side view, depth 5 (z 0.5-4.5) -- king width.",
+        "tags": ["bed", "side-view", "d5"],
+        "whd_segments_fn": _bed_v5_segs_3d,
+        "whd_ports_fn":    _bed_v5_ports_3d,
     },
 })
 
 # ── Bed 3D zone configuration ─────────────────────────────────────────────────
 BED_ZONES_3D = [
-    {"id": "bed", "x_rule": ["first 4"], "y_rule": ["first 3"], "z_rule": ["full"],
-     "modules": ["bed_v1_3d", "bed_v2_3d"]},
+    {"id": "bed", "x_rule": ["first 6", "first 5", "first 4", "first 3"],
+     "y_rule": ["first 2"], "z_rule": ["full"],
+     "modules": ["bed_v1_3d", "bed_v2_3d", "bed_v3_3d", "bed_v4_3d",
+                 "bed_v5_3d_v1", "bed_v5_3d_v2", "bed_v5_3d_v3", "bed_v5_3d_v4"]},
 ]

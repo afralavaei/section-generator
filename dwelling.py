@@ -22,6 +22,26 @@ _SECTION_INNER_W = {
 }
 
 
+def dwelling_sections_meta(spec: dict) -> list[dict]:
+    """
+    Return section metadata (type, d, W) without running any solver.
+    Used for plan-view rendering where only dimensions matter.
+    """
+    shared_W : int   = spec.get("W", 9)
+    results          : list[dict] = []
+    d_offset : float = 0.0
+    for fn in spec.get("functions", []):
+        d = fn.get("d", 3)
+        results.append({
+            "type":     fn["type"],
+            "d_offset": d_offset,
+            "d":        d,
+            "W":        shared_W,
+        })
+        d_offset += d
+    return results
+
+
 def solve_dwelling_2d(spec: dict) -> list[dict]:
     """
     Solve each function in the spec and return placed-module results with depth offsets.
@@ -85,34 +105,61 @@ def solve_dwelling_2d(spec: dict) -> list[dict]:
 
 def solve_dwelling_3d(spec: dict) -> list[dict]:
     """
-    3D version of solve_dwelling_2d.  Each section is solved at its natural width
-    (from _SECTION_INNER_W) to avoid exponential gap-filling blowup in narrow
-    section types like kitchen and bath.  The "W" in the spec is kept as a
-    reference max-width but each section result carries its own W.
+    3D dwelling assembler.
+
+    Rules enforced:
+    - Every section reports the same outer frame width (spec["W"]) so the
+      structural envelope is uniform.  Interior modules solve at each section's
+      natural inner width; extra space within the frame is left as an open bay.
+    - Every non-last section uses the same corridor side.
+    - Kitchen is always solved with corridor_right (only orientation its solver
+      supports).
+    - The last section may omit the corridor when spec["last_no_corridor"] is
+      True (default False).
     """
-    corridor_side = spec.get("corridor_side", "right")
-    corridor_w    = spec.get("corridor_w", 2)
-    H             = spec["H"]
-    ref_W         = spec.get("W", 9)   # reference / max width (sidebar value)
-    corridor      = f"corridor_{corridor_side}" if corridor_side != "none" else "none"
+    corridor_side      = spec.get("corridor_side", "right")
+    corridor_w         = spec.get("corridor_w", 2)
+    H                  = spec["H"]
+    shared_W           = spec.get("W", 9)   # uniform outer frame width
+    last_no_corridor   = spec.get("last_no_corridor", False)
+    shared_corr        = f"corridor_{corridor_side}" if corridor_side != "none" else "none"
 
-    results  : list[dict] = []
-    d_offset : float      = 0.0
+    functions = spec["functions"]
+    results   : list[dict] = []
+    d_offset  : float      = 0.0
 
-    for fn in spec["functions"]:
+    for i, fn in enumerate(functions):
         fn_type      = fn["type"]
         d            = fn.get("d", 3)
         seed         = fn.get("seed", 42)
         dining_style = fn.get("dining_style", "compact")
+        num_chairs   = fn.get("num_chairs",   2)
         roof_style   = fn.get("roof_style",   "any")
         living_combo = fn.get("living_combo", "full")
 
-        fn_corridor = "corridor_right" if fn_type in _ALWAYS_CORR_RIGHT else corridor
-        fn_corr_w   = corridor_w if fn_corridor != "none" else 0
+        is_last = (i == len(functions) - 1)
 
-        # Use each section's natural inner width so gap-filling stays tractable.
-        inner_w = _SECTION_INNER_W.get(fn_type, ref_W - fn_corr_w)
-        fn_W    = inner_w + fn_corr_w
+        if is_last and last_no_corridor:
+            fn_corridor = "none"
+            fn_corr_w   = 0
+        elif fn_type in _ALWAYS_CORR_RIGHT:
+            fn_corridor = "corridor_right"
+            fn_corr_w   = corridor_w
+        else:
+            fn_corridor = shared_corr
+            fn_corr_w   = corridor_w if fn_corridor != "none" else 0
+
+        # For dining, inner width depends on num_chairs and dining_style.
+        # 1-chair always needs corridor_right so the table has a clean right boundary.
+        if fn_type == "dining":
+            if num_chairs == 1 and fn_corridor == "none":
+                fn_corridor = "corridor_right"
+                fn_corr_w   = corridor_w
+            inner_w = (6 if dining_style == "compact" else 8) if num_chairs == 2 \
+                      else (4 if dining_style == "compact" else 5)
+        else:
+            inner_w = _SECTION_INNER_W.get(fn_type, shared_W - fn_corr_w)
+        fn_W = inner_w + fn_corr_w
 
         raw = solve3d(
             fn_W, H, d, seed, fn_corridor, fn_corr_w,
@@ -130,7 +177,7 @@ def solve_dwelling_3d(spec: dict) -> list[dict]:
             "type":     fn_type,
             "d_offset": d_offset,
             "d":        d,
-            "W":        fn_W,
+            "W":        shared_W,   # uniform frame — all sections same width
             "H":        H,
             "placed":   placed,
         })
