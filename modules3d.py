@@ -999,13 +999,12 @@ MODULES_3D.update({
 _SHELF_CAT_3D: dict = {
     "shelf_h1_v1":         "plain",
     "shelf_h2_v1":         "plain",
-    "shelf_h2_v2":         "pitched",
-    "shelf_h2_v3":         "pitched",
+    "shelf_h2_v2":         "plain",
+    "shelf_h2_v3":         "plain",
     "shelf_pitched_sym_v1":"pitched",
-    "shelf_pitched_sym_v2":"pitched",
     "shelf_h3_v1":         "divided",
-    "shelf_h3_v2":         "pitched",
-    "roof_3d_v1":          "pitched",
+    "shelf_h3_v2":         "plain",
+    "roof_3d_v1":          "plain",
 }
 
 
@@ -1418,6 +1417,17 @@ def _kitchen_lower_wide_segs(w, h, d):
 def _kitchen_lower_ports(w, h, d):
     return _ports_lift({"top": [(0.5, 3.0)], "right": [(3.0, 0.5)], "bottom": [], "left": []}, d=d)
 
+def _kitchen_lower_through_segs(w, h, d):
+    return _lift2d([
+        [(2.5, 3.0), (2.5, 2.5)],
+        [(2.5, 2.5), (0.5, 2.5), (0.5, 0.5), (1.0, 0.5), (2.5, 0.5), (2.5, 2.5)],
+        [(0.0, 0.5), (0.5, 0.5)],
+        [(1.0, 0.5), (3.0, 0.5)],
+    ], d=d, ex={(2.5, 3.0), (0.0, 0.5), (3.0, 0.5)})
+
+def _kitchen_lower_through_ports(w, h, d):
+    return _ports_lift({"top": [(2.5, 3.0)], "left": [(0.0, 0.5)], "right": [(3.0, 0.5)], "bottom": []}, d=d)
+
 def _kitchen_upper_segs(w, h, d):
     # narrow body: right edge at w-0.5 (matches 2D narrow variant)
     return _lift2d([
@@ -1476,6 +1486,25 @@ MODULES_3D.update({
         "ports": _ports_lift({"top": [(0.5, 3.0)], "right": [(3.0, 0.5)], "bottom": [], "left": []}),
         "whd_segments_fn": _kitchen_lower_wide_segs,
         "whd_ports_fn":    _kitchen_lower_ports,
+    },
+    # Through-counter 3D — right-bank module for W=8 double-counter (inner_W=6).
+    # Left exit connects to left-bank right exit; right exit connects to corridor.
+    # Top port at x=2.5 starts the filler chain to the FRS shelf post at x=5.5.
+    "kitchen_lower_w3_h4_through_3d": {
+        "id": "kitchen_lower_w3_h4_through_3d", "w": 3, "h": 3, "d": 3,
+        "zone": "lower_cabinet",
+        "source_2d_id": "kitchen_lower_w3_h4_through",
+        "description": "Kitchen right-bank counter 3D — through variant (left + right exits) for W=8.",
+        "tags": ["kitchen", "lower_cabinet", "through"],
+        "segments": _lift2d([
+            [(2.5, 3.0), (2.5, 2.5)],
+            [(2.5, 2.5), (0.5, 2.5), (0.5, 0.5), (1.0, 0.5), (2.5, 0.5), (2.5, 2.5)],
+            [(0.0, 0.5), (0.5, 0.5)],
+            [(1.0, 0.5), (3.0, 0.5)],
+        ]),
+        "ports": _ports_lift({"top": [(2.5, 3.0)], "left": [(0.0, 0.5)], "right": [(3.0, 0.5)], "bottom": []}),
+        "whd_segments_fn": _kitchen_lower_through_segs,
+        "whd_ports_fn":    _kitchen_lower_through_ports,
     },
 
     "kitchen_upper_w2_h1_3d": {
@@ -1622,6 +1651,17 @@ KITCHEN_ZONES_INNER_3D = [
      "z_rule": ["full"], "modules": _UPPER_3D_ALL},
 ]
 
+# W=8 variant (inner_W=6): left bank (right-exit) + right bank (through: left+right exits).
+# Mirrors the 2D KITCHEN_ZONES_INNER_W6 layout.
+KITCHEN_ZONES_INNER_W6_3D = [
+    {"id": "lower_cabinet",   "x_rule": ["first 3"],       "y_rule": ["first 3"],
+     "z_rule": ["full"], "modules": ["kitchen_lower_w3_h4_v2_3d", "kitchen_lower_w3_h4_v3_3d"]},
+    {"id": "lower_cabinet_r", "x_rule": ["from 3 size 3"], "y_rule": ["first 3"],
+     "z_rule": ["full"], "modules": ["kitchen_lower_w3_h4_through_3d"]},
+    {"id": "upper_cabinet",   "x_rule": ["first 2"],       "y_rule": ["from 3 to last 0"],
+     "z_rule": ["full"], "modules": _UPPER_3D_ALL},
+]
+
 
 # ── Living 3D zone configurations ─────────────────────────────────────────────
 
@@ -1632,43 +1672,45 @@ _LIVING_SHELF_3D = [
     "shelf_h3_v1", "shelf_h3_v2",
 ]
 
-LIVING_ZONES_3D = [
-    {
-        "id":      "sofa",
-        "x_rule":  ["first 4", "first 3", "first 2"],
-        "y_rule":  ["first 3", "first 2"],
-        "z_rule":  ["full"],
-        "modules": ["sofa_h3_v4_3d", "sofa_h3_v3_3d", "sofa_h3_v2_3d", "sofa_h3_v1_3d"],
-    },
-    {
-        "id":      "table",
-        "x_rule":  ["middle 2"],
-        "y_rule":  ["first 2"],
-        "z_rule":  ["full"],
-        "modules": ["table_h2_v1", "table_h2_v3", "table_h2_v5", "table_h2_v6"],
-    },
-    {
-        "id":      "tv_table",
-        "x_rule":  ["last 2"],
-        "y_rule":  ["first 2"],
-        "z_rule":  ["full"],
-        "modules": ["tv_table_h2_v1", "tv_table_h2_v2", "tv_table_h2_v3"],
-    },
-    {
-        "id":      "shelf",
-        "x_rule":  ["full"],
-        "y_rule":  ["last 1", "last 2", "last 3"],
-        "z_rule":  ["full"],
-        "modules": _LIVING_SHELF_3D,
-    },
-]
+_LZ3_SOFA = {
+    "id":      "sofa",
+    "x_rule":  ["first 3", "first 2"],
+    "y_rule":  ["first 3", "first 2"],
+    "z_rule":  ["full"],
+    "modules": ["sofa_h3_v3_3d", "sofa_h3_v2_3d", "sofa_h3_v1_3d"],
+}
+_LZ3_TABLE = {
+    "id":      "table",
+    # "from 3 size 2" → x=[3,5): sits directly to the right of sofa, no overlap.
+    "x_rule":  ["from 3 size 2"],
+    "y_rule":  ["first 2"],
+    "z_rule":  ["full"],
+    "modules": ["table_h2_v1", "table_h2_v3", "table_h2_v5", "table_h2_v6"],
+}
+_LZ3_TV = {
+    "id":      "tv_table",
+    "x_rule":  ["last 2"],
+    "y_rule":  ["first 2"],
+    "z_rule":  ["full"],
+    "modules": ["tv_table_h2_v1", "tv_table_h2_v2", "tv_table_h2_v3"],
+}
+_LZ3_SHELF = {
+    "id":      "shelf",
+    "x_rule":  ["full"],
+    "y_rule":  ["last 1", "last 2", "last 3"],
+    "z_rule":  ["full"],
+    "modules": _LIVING_SHELF_3D,
+}
 
-_LZ3_SOFA  = LIVING_ZONES_3D[0]
-_LZ3_TV    = LIVING_ZONES_3D[2]
-_LZ3_SHELF = LIVING_ZONES_3D[3]
+# Full no-corridor layout: sofa + table + tv_table + shelf (W≥7, no corridor).
+LIVING_ZONES_3D = [_LZ3_SOFA, _LZ3_TABLE, _LZ3_TV, _LZ3_SHELF]
+
+# Inner corridor layout (pre-placed corridor + shelf): sofa + table only (tv_table
+# won't fit in inner_W=6 alongside sofa w=3 + table w=2 + corridor w=2).
+LIVING_ZONES_INNER_3D = [_LZ3_SOFA, _LZ3_TABLE]
 
 # sofa + tv_table: tv_table has no right port — works at last 2
-LIVING_ZONES_SOFA_TV_3D    = [_LZ3_SOFA, _LZ3_TV,    _LZ3_SHELF]
+LIVING_ZONES_SOFA_TV_3D = [_LZ3_SOFA, _LZ3_TV, _LZ3_SHELF]
 
 # ── Bed 3D modules ────────────────────────────────────────────────────────────
 # All beds: d=5, front profile at z=0.5, back at z=4.5

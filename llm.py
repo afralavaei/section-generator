@@ -77,7 +77,7 @@ DINING_SCHEMA = {
         "num_chairs":     {"type": "integer", "minimum": 1, "maximum": 2},
         "h":              {"type": "integer", "minimum": 7, "maximum": 8},
         "d":              {"type": "integer", "minimum": 2, "maximum": 9},
-        "roof_style":     {"type": "string",  "enum": ["any", "plain", "divided", "pitched"]},
+        "roof_style":     {"type": "string",  "enum": ["any", "plain", "divided", "pitched", "slanted", "divided_slanted"]},
         "preferred_tags": {"type": "array",   "items": {"type": "string"}},
         "reply":          {"type": "string"},
     },
@@ -112,11 +112,17 @@ _DINING_SYSTEM = (
     "  'higher ceiling', 'taller room', 'more headroom', 'airy', 'dramatic space' "
     "→ increase h. preferred_tags UNCHANGED.\n\n"
 
+    "SECTION DEPTH rules (only change d):\n"
+    "  'guests', 'entertaining', 'hosting', 'visitors', 'have people over' "
+    "→ double current d (e.g. d=3 → d=6). dining_style and preferred_tags UNCHANGED.\n\n"
+
     "WORKED EXAMPLES:\n"
-    "  'higher table'    → preferred_tags: ['tall_table'],   h UNCHANGED, dining_style UNCHANGED\n"
-    "  'higher chairs'   → preferred_tags: ['tall_chairs'],  h UNCHANGED, dining_style UNCHANGED\n"
-    "  'more spacious'   → dining_style: 'spacious',         preferred_tags UNCHANGED\n"
-    "  'higher ceiling'  → h increases by 2,                 preferred_tags UNCHANGED\n\n"
+    "  'higher table'              → preferred_tags: ['tall_table'],   h UNCHANGED, dining_style UNCHANGED\n"
+    "  'higher chairs'             → preferred_tags: ['tall_chairs'],  h UNCHANGED, dining_style UNCHANGED\n"
+    "  'more spacious'             → dining_style: 'spacious',         preferred_tags UNCHANGED\n"
+    "  'higher ceiling'            → h increases by 2,                 preferred_tags UNCHANGED\n"
+    "  'might have guests'         → d doubles (e.g. 3→6),             everything else UNCHANGED\n"
+    "  'we sometimes entertain'    → d doubles,                        everything else UNCHANGED\n\n"
 
     "RULE: Only change num_chairs if the user explicitly mentions seating sides, dining alone, or face-to-face.\n\n"
 
@@ -183,6 +189,13 @@ def _apply_corridor_changes(msg: str, current: dict, params: dict) -> dict:
         result = dict(current)
         result["corridor_side"] = side
         result["corridor_w"]    = cw
+        # Corridor added to a slanted section → divided_slanted
+        if side in ("left", "right") and current.get("corridor_side", "none") == "none":
+            if current.get("roof_style", "any") == "slanted":
+                result["roof_style"] = "divided_slanted"
+        # Corridor removed → revert divided_slanted back to plain slanted
+        elif side == "none" and current.get("roof_style") == "divided_slanted":
+            result["roof_style"] = "slanted"
         if any(kw in msg_l for kw in _SECTION_WIDTH_KW):
             result["dining_style"] = params.get("dining_style", current.get("dining_style"))
         return result
@@ -295,9 +308,15 @@ def _apply_furniture_height(msg: str, current: dict, params: dict) -> dict:
 
 def _generate(system: str, prompt: str,
               history: list[dict] | None = None,
-              temperature: float = 0.3) -> dict:
-    """Call the active model with optional conversation history. Returns parsed JSON."""
-    provider = provider_for(MODEL)
+              temperature: float = 0.3,
+              model: str | None = None) -> dict:
+    """Call the active model with optional conversation history. Returns parsed JSON.
+
+    `model` overrides the module-level MODEL for this call only (used by judge_section
+    to run the same rubric against a second model for a cross-model agreement check).
+    """
+    _model   = model or MODEL
+    provider = provider_for(_model)
     key      = _key_for(provider)
     history  = history or []
 
@@ -311,13 +330,13 @@ def _generate(system: str, prompt: str,
             contents.append(gtypes.Content(role=role, parts=[gtypes.Part(text=msg["content"])]))
         contents.append(gtypes.Content(role="user", parts=[gtypes.Part(text=prompt)]))
         # Gemma models don't support response_mime_type — omit it and parse manually.
-        _is_gemma = MODEL.startswith("gemma")
+        _is_gemma = _model.startswith("gemma")
         cfg = gtypes.GenerateContentConfig(
             system_instruction=system,
             temperature=temperature,
             **({} if _is_gemma else {"response_mime_type": "application/json"}),
         )
-        response = client.models.generate_content(model=MODEL, contents=contents, config=cfg)
+        response = client.models.generate_content(model=_model, contents=contents, config=cfg)
         text = response.text.strip()
         if text.startswith("```"):
             text = text.split("```")[1]
@@ -333,7 +352,7 @@ def _generate(system: str, prompt: str,
             messages.append({"role": msg["role"], "content": msg["content"]})
         messages.append({"role": "user", "content": prompt})
         response = client.chat.completions.create(
-            model=MODEL,
+            model=_model,
             messages=messages,
             response_format={"type": "json_object"},
             temperature=temperature,
@@ -348,7 +367,7 @@ def _generate(system: str, prompt: str,
             messages.append({"role": msg["role"], "content": msg["content"]})
         messages.append({"role": "user", "content": prompt})
         response = client.messages.create(
-            model=MODEL,
+            model=_model,
             max_tokens=1024,
             system=system + "\n\nYou must respond with valid JSON only, no other text.",
             messages=messages,
@@ -356,7 +375,7 @@ def _generate(system: str, prompt: str,
         )
         return json.loads(response.content[0].text)
 
-    raise RuntimeError(f"Unknown provider for model: {MODEL}")
+    raise RuntimeError(f"Unknown provider for model: {_model}")
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
@@ -383,7 +402,9 @@ def chat_modify_dining(
                     "both sides", "two people", "single side"]
     _depth_kw    = ["deeper", "shallower", "depth", "longer table", "shorter table",
                     "longer section", "shorter section", "more depth", "less depth",
-                    "extend", "longer dining", "make it longer", "make it shorter"]
+                    "extend", "longer dining", "make it longer", "make it shorter",
+                    "guest", "guests", "entertaining", "visitors", "hosting", "company",
+                    "people over", "have people", "social"]
     _ceiling_kw  = ["higher ceiling", "taller room", "more headroom", "lower ceiling",
                     "ceiling height", "room height", "raise the ceiling", "airy",
                     "dramatic space", "tall room", "short room", "change the height"]
@@ -452,3 +473,62 @@ def onboarding_to_spec(site: dict, answers: dict) -> tuple[dict | None, str]:
             if attempt < 2:
                 time.sleep(2)
     return None, last_error
+
+
+# ── Section judge (spatial-quality selection — research proof of concept) ──────
+#
+# The solver already produces several valid section candidates by varying its seed,
+# with no way to tell them apart on spatial quality. judge_section scores one
+# candidate's enclosure/openness character, grounded in geometric facts computed
+# from the solver's own placement data (reach distance, headroom) — the LLM is not
+# asked to invent measurements, only to interpret them for a translucent-fabric
+# section rather than an opaque-wall floor plan. Candidate ranking and per-user
+# weighting happen in plain Python (see judge_demo.py); this function only scores
+# one candidate at a time so the same rubric can be re-run against a second model
+# for a cross-model agreement check.
+
+JUDGE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "enclosure_score": {"type": "number", "minimum": 0, "maximum": 10},
+        "openness_score":  {"type": "number", "minimum": 0, "maximum": 10},
+        "reasoning":       {"type": "string"},
+    },
+    "required": ["enclosure_score", "openness_score", "reasoning"],
+}
+
+_JUDGE_SYSTEM = (
+    "You are judging one candidate layout of a section for Nomadic Engine, a deployable off-grid "
+    "dwelling built from structural ribs and a translucent fabric membrane — not solid opaque "
+    "walls. You are given computed geometric facts about the vertical stack the occupant deals "
+    "with at this spot: how high they must reach for the highest comfortably-usable storage "
+    "(reach_height), and how much additional storage or roofline sits above that comfortable "
+    "reach (overhead_height).\n\n"
+    "Score two things on a 0-10 scale, describing the space as built (not for any specific user):\n"
+    "  enclosure_score = how enclosed/heavy the overhead presence feels at this spot — higher if "
+    "reach_height and overhead_height are large relative to H (storage stacks close overhead), "
+    "lower if there's a lot of open height above.\n"
+    "  openness_score = how much clear vertical space and visual reach there is — higher if the "
+    "occupant isn't boxed in by storage overhead, lower if it's tight.\n\n"
+    "Ground every score in the computed facts given — do not invent details not in the data. "
+    "Because the envelope is translucent fabric rather than solid walls, reason about proximity and "
+    "enclosure, not opaque occlusion.\n\n"
+    f"Output valid JSON matching this schema: {json.dumps(JUDGE_SCHEMA)}\n"
+)
+
+
+def judge_section(facts: dict, model: str | None = None) -> dict | None:
+    """Score one candidate section's spatial character. Returns None on failure.
+
+    `facts` describes computed placement geometry, e.g.
+    {"H": 9, "headroom_at_seat": 2.0, "shelf_reach": 1.5}.
+    `model` overrides the default model for this call (for cross-model comparison).
+    """
+    prompt = f"Computed facts for this candidate: {json.dumps(facts)}"
+    for attempt in range(3):
+        try:
+            return _generate(_JUDGE_SYSTEM, prompt, temperature=0.2, model=model)
+        except Exception:
+            if attempt < 2:
+                time.sleep(2)
+    return None

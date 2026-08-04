@@ -124,7 +124,7 @@ def plot_section_3d(placed: List[dict], W: int, H: int, D: int,
     ax = fig.add_subplot(111, projection="3d")
     _clean_ax(fig, ax, dark=dark)
 
-    line_c = "#e8ece8" if dark else LINE_COLOR
+    line_c = "#c8d0c8" if dark else LINE_COLOR
     grid_c = "#2a3028" if dark else GRID_COLOR
 
     for p in placed:

@@ -24,8 +24,10 @@ from modules3d import (
     ZONES_3D_FULL_ROOF_CORR_RIGHT, ZONES_3D_FULL_ROOF_CORR_LEFT,
     ZONES_3D_FULL_ROOF_CORR_RIGHT_1CHAIR, ZONES_3D_FULL_ROOF_CORR_LEFT_1CHAIR,
     KITCHEN_ZONES_INNER_3D,
+    KITCHEN_ZONES_INNER_W6_3D,
     LIVING_ZONES_SOFA_TV_3D,
     LIVING_ZONES_3D,
+    LIVING_ZONES_INNER_3D,
     BED_ZONES_3D,
     FILLER_IDS_3D, _SHELF_CAT_3D,
     _TABLE_COMPACT_3D, _TABLE_SPACIOUS_3D,
@@ -371,7 +373,8 @@ def solve3d(W: int, H: int, D: int, seed: int,
                 if z["id"] != "kitchen_wall"
             ]
 
-        active_zones_k = _pair_k3d(KITCHEN_ZONES_INNER_3D)
+        base_zones_k3d = KITCHEN_ZONES_INNER_W6_3D if inner_W >= 6 else KITCHEN_ZONES_INNER_3D
+        active_zones_k = _pair_k3d(base_zones_k3d)
         placed: List[dict] = [
             {"module_id": "corridor_right_3d_short",
              "x_off": float(inner_W), "y_off": 0.0, "z_off": 0.0,
@@ -609,10 +612,48 @@ def solve3d(W: int, H: int, D: int, seed: int,
 
     if section == "living":
         placed: List[dict] = []
-        if living_combo == "sofa_tv":
-            active_zones_l = LIVING_ZONES_SOFA_TV_3D
+
+        if corridor in ("corridor_right", "corridor_left"):
+            inner_W  = W - corridor_w
+            x_zone_off = 0.0 if corridor == "corridor_right" else float(corridor_w)
+            # Pick shelf — no FRS post for living (avoids cross-connection problem at the post column)
+            shelf_pool = [mid for mid, m in MODULES_3D.items()
+                          if m.get("zone") == "shelf"
+                          and not mid.endswith(("_corr_r", "_corr_l"))
+                          and "frs3d" not in mid]
+            if roof_style != "any":
+                shelf_pool = [m for m in shelf_pool
+                              if _SHELF_CAT_3D.get(m, "any") == roof_style]
+            rng.shuffle(shelf_pool)
+            by_h: dict = {}
+            for mid in shelf_pool:
+                sh = MODULES_3D[mid]["h"]
+                if H - sh >= 3:
+                    by_h.setdefault(sh, []).append(mid)
+            if not by_h:
+                return None
+            shelf_h = 2 if 2 in by_h else rng.choice(list(by_h.keys()))
+            shelf_mid = rng.choice(by_h[shelf_h])
+            H_solve = H - shelf_h
+            corr_x = float(inner_W) if corridor == "corridor_right" else 0.0
+            corr_mid = "corridor_right_3d_short" if corridor == "corridor_right" else "corridor_left_3d_short"
+            placed.extend([
+                {"module_id": corr_mid,  "x_off": corr_x, "y_off": 0.0, "z_off": 0.0,
+                 "w": corridor_w, "h": H_solve, "d": D},
+                {"module_id": shelf_mid, "x_off": 0.0, "y_off": float(H_solve), "z_off": 0.0,
+                 "w": W, "h": shelf_h, "d": D},
+            ])
+            W_zone = inner_W
+            H_zone = H_solve
+            active_zones_l = LIVING_ZONES_INNER_3D  # sofa + table only (tv_table doesn't fit at inner_W=6)
         else:
-            active_zones_l = LIVING_ZONES_3D
+            x_zone_off = 0.0
+            W_zone = W
+            H_zone = H
+            if living_combo == "sofa_tv":
+                active_zones_l = LIVING_ZONES_SOFA_TV_3D
+            else:
+                active_zones_l = LIVING_ZONES_3D
 
         reg_candidates_l: List[List[dict]] = []
         for zone in active_zones_l:
@@ -620,14 +661,15 @@ def solve3d(W: int, H: int, D: int, seed: int,
             for xr in zone["x_rule"]:
                 for yr in zone["y_rule"]:
                     for zr in zone.get("z_rule", ["full"]):
-                        res = resolve_zone_position_3d(zone, W, H, D, xr, yr, zr)
+                        res = resolve_zone_position_3d(zone, W_zone, H_zone, D, xr, yr, zr)
                         w, h, d = res["w"], res["h"], res["d"]
                         for mid in zone["modules"]:
                             m = MODULES_3D[mid]
                             if _module_fits(m, w, h, d):
                                 options.append({
                                     "module_id": mid,
-                                    "x_off": res["x_off"], "y_off": res["y_off"],
+                                    "x_off": res["x_off"] + x_zone_off,
+                                    "y_off": res["y_off"],
                                     "z_off": res["z_off"],
                                     "w": w, "h": h, "d": d,
                                 })
