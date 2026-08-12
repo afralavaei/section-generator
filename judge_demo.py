@@ -30,7 +30,10 @@ What it does, end to end:
   7. Renders the winning candidates to PNGs for the meeting.
 """
 import json
+import sys
 from pathlib import Path
+
+sys.stdout.reconfigure(encoding="utf-8")
 
 import llm
 from solver import solve
@@ -113,6 +116,18 @@ def main() -> None:
         print("\nNo candidates were successfully judged — check API key / model config.")
         return
 
+    # ── Render every valid candidate + save a manifest for the Streamlit UI ──
+    manifest = []
+    for c in scored:
+        img_name = f"seed{c['seed']}.png"
+        fig = plot_section(c["placed"], W, H, show_figures=True)
+        fig.savefig(OUT_DIR / img_name, dpi=150, bbox_inches="tight")
+        manifest.append({
+            "seed": c["seed"], "facts": c["facts"], "score": c["score"], "image": img_name,
+        })
+    (OUT_DIR / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    print(f"Rendered {len(manifest)} candidates + wrote manifest.json to {OUT_DIR}/\n")
+
     print("\n" + "=" * 70)
     print("Profile: WANTS PRIVACY  (enclosure weighted 0.8, openness 0.2)")
     print("=" * 70)
@@ -132,12 +147,6 @@ def main() -> None:
         print(f"  seed {c['seed']:>2}  weighted_score={weighted_score(c['score'], 0.2, 0.8):.2f}")
     print(f"\n  -> Selected seed {best_open['seed']}")
 
-    fig1 = plot_section(best_privacy["placed"], W, H, show_figures=True)
-    fig1.savefig(OUT_DIR / f"privacy_seed{best_privacy['seed']}.png", dpi=150, bbox_inches="tight")
-    fig2 = plot_section(best_open["placed"], W, H, show_figures=True)
-    fig2.savefig(OUT_DIR / f"openness_seed{best_open['seed']}.png", dpi=150, bbox_inches="tight")
-    print(f"\nSaved renders to {OUT_DIR}/")
-
     # ── Simulated conversational correction ─────────────────────────────────
     print("\n" + "=" * 70)
     print("Correction turn: user says \"too exposed, I want more privacy\"")
@@ -147,11 +156,6 @@ def main() -> None:
     corrected_rank = rank(scored, w_enclosure, w_openness)
     print(f"  Weights adjusted: enclosure={w_enclosure:.2f}, openness={w_openness:.2f}")
     print(f"  Re-selected seed {corrected_rank[0]['seed']} (was {best_privacy['seed']})")
-    if corrected_rank[0]["seed"] != best_privacy["seed"]:
-        fig3 = plot_section(corrected_rank[0]["placed"], W, H, show_figures=True)
-        fig3.savefig(OUT_DIR / f"privacy_corrected_seed{corrected_rank[0]['seed']}.png",
-                     dpi=150, bbox_inches="tight")
-        print(f"  Saved corrected render to {OUT_DIR}/")
 
     # ── Cross-model agreement check ─────────────────────────────────────────
     if SECOND_MODEL:
