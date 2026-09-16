@@ -109,7 +109,7 @@ def plot_section(placed: List[dict], W: int, H: int,
     scale = max(1.2, 8.0 / W)
     fig, ax = plt.subplots(figsize=(W * scale, H * scale))
 
-    line_color = "#e8ece8" if dark else LINE_COLOR
+    line_color = "#c8d0c8" if dark else LINE_COLOR
     grid_color = "#3a4038" if dark else GRID_COLOR
     label_color = "#8a9a88" if dark else "#666666"
 

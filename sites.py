@@ -124,3 +124,21 @@ def get_site(name: str) -> dict | None:
 
 def sites_by_region(region: str) -> list[dict]:
     return [s for s in SITES if s["region"] == region]
+
+
+def site_to_roof_style(site: dict) -> str:
+    """Return the suggested roof_style for a site based on its climate."""
+    zone  = site.get("climate_zone", "")
+    precip = site.get("precipitation", "")
+
+    if zone in ("polar", "mountain_alpine"):
+        return "pitched"
+    if zone == "dry_arid":
+        return "plain"
+    if zone == "tropical":
+        return "slanted"
+    if zone == "continental":
+        return "pitched" if precip == "snowy" else "slanted"
+    if zone == "temperate":
+        return "slanted" if precip in ("rainy", "wet") else "divided"
+    return "any"

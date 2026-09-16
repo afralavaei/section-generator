@@ -7,7 +7,7 @@ from modules import (
     ZONES_FULL_ROOF_CORR_RIGHT, ZONES_FULL_ROOF_CORR_LEFT,
     ZONES_FULL_ROOF_CORR_RIGHT_1CHAIR, ZONES_FULL_ROOF_CORR_LEFT_1CHAIR,
     _TABLE_COMPACT, _TABLE_SPACIOUS, _SHELF_CATEGORY,
-    KITCHEN_ZONES_INNER,
+    KITCHEN_ZONES_INNER, KITCHEN_ZONES_INNER_W6,
     LIVING_ZONES, LIVING_ZONES_CORR_RIGHT, LIVING_ZONES_CORR_LEFT,
     LIVING_ZONES_INNER, LIVING_ZONES_INNER_CORR_RIGHT, LIVING_ZONES_INNER_CORR_LEFT,
     _TABLE_COMPACT_LIVING, _TABLE_SPACIOUS_LIVING,
@@ -364,7 +364,8 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
                 if z["id"] != "kitchen_wall"
             ]
 
-        active_zones_k = _pair_k(KITCHEN_ZONES_INNER)
+        base_zones_k   = KITCHEN_ZONES_INNER_W6 if inner_W >= 6 else KITCHEN_ZONES_INNER
+        active_zones_k = _pair_k(base_zones_k)
         placed: List[dict] = [
             {"module_id": corr_mid_k,
              "x_off": float(inner_W), "y_off": 0.0, "w": corridor_w, "h": H_solve_k},
@@ -684,8 +685,7 @@ def solve(W: int, H: int, seed: int, corridor: str = "none", corridor_w: int = 2
                 if by_h_l:
                     shelf_h = rng.choice(list(by_h_l.keys()))
                     shelf_mid_l = rng.choice(by_h_l[shelf_h])
-                    x_post_l = float(inner_W) - 0.5 if corridor == "corridor_right" else float(corridor_w) + 0.5
-                    shelf_mid_l = _make_full_roof_shelf(shelf_mid_l, W, x_post_l)
+                    # No FRS post for living full combo — table has no top port to anchor chain
                     H_solve_l = H - shelf_h
                     spacious_l = corridor_w >= 4
                     if corridor == "corridor_right":

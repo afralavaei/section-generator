@@ -10,7 +10,8 @@ from viewer3d import plot_section_3d, plot_module_library_3d, plot_slice_2d, plo
 from modules3d import MODULES_3D
 import llm
 from llm import chat_modify_dining, onboarding_to_spec
-from sites import SITES, REGIONS, get_site, sites_by_region
+from sites import SITES, REGIONS, get_site, sites_by_region, site_to_roof_style
+from export import export_section_3d_rhino
 
 _MODULES_PATH   = os.path.join(os.path.dirname(__file__), "modules.py")
 _DRAWING_PATH   = os.path.join(os.path.dirname(__file__), "drawing.py")
@@ -414,12 +415,14 @@ if not st.session_state.onboarding_complete:
                     )
                 if spec:
                     _num_chairs = spec.get("num_chairs", 2)
+                    _site       = st.session_state.onboarding_site
+                    _site_roof  = site_to_roof_style(_site) if _site else "any"
                     st.session_state.dining_spec.update({
                         "dining_style":   spec.get("dining_style", "compact"),
                         "num_chairs":     _num_chairs,
                         "h":              spec.get("h", 7),
                         "d":              spec.get("d", 3),
-                        "roof_style":     spec.get("roof_style", "any"),
+                        "roof_style":     spec.get("roof_style") or _site_roof,
                         "preferred_tags": spec.get("preferred_tags", []),
                         "corridor_side":  "right" if _num_chairs == 1 else "none",
                         "corridor_w":     2,
@@ -611,9 +614,9 @@ with st.sidebar:
 
         roof_choice = st.radio(
             "Roof Style",
-            options=["Any", "Plain", "Divided", "Pitched"],
+            options=["Any", "Plain", "Divided", "Pitched", "Slanted"],
             horizontal=True,
-            help="Plain = flat top bar.  Divided = internal shelves/dividers.  Pitched = lean-to or gable ridge.",
+            help="Plain = flat/dry.  Divided = temperate.  Pitched = cold/snow (gable).  Slanted = rainy/oceanic (lean-to).",
         )
         roof_style = roof_choice.lower()
     elif section_type == "Kitchen":
@@ -622,9 +625,9 @@ with st.sidebar:
         st.caption(f"Section: **{W} × H**  ({_inner_w_k} kitchen + {corridor_w} corridor)")
         roof_choice = st.radio(
             "Roof Style",
-            options=["Any", "Plain", "Divided", "Pitched"],
+            options=["Any", "Plain", "Divided", "Pitched", "Slanted"],
             horizontal=True,
-            help="Plain = flat top bar.  Divided = internal shelves/dividers.  Pitched = lean-to or gable ridge.",
+            help="Plain = flat/dry.  Divided = temperate.  Pitched = cold/snow (gable).  Slanted = rainy/oceanic (lean-to).",
         )
         roof_style = roof_choice.lower()
         show_figures = st.checkbox(
@@ -642,9 +645,9 @@ with st.sidebar:
         )
         roof_choice = st.radio(
             "Roof Style",
-            options=["Any", "Plain", "Divided", "Pitched"],
+            options=["Any", "Plain", "Divided", "Pitched", "Slanted"],
             horizontal=True,
-            help="Plain = flat top bar.  Divided = internal shelves/dividers.  Pitched = lean-to or gable ridge.",
+            help="Plain = flat/dry.  Divided = temperate.  Pitched = cold/snow (gable).  Slanted = rainy/oceanic (lean-to).",
         )
         roof_style = roof_choice.lower()
     elif section_type == "Dwelling":
@@ -738,9 +741,9 @@ with st.sidebar:
 
         roof_choice = st.radio(
             "Roof Style",
-            options=["Any", "Plain", "Divided", "Pitched"],
+            options=["Any", "Plain", "Divided", "Pitched", "Slanted"],
             horizontal=True,
-            help="Plain = flat top bar.  Divided = internal shelves/dividers.  Pitched = lean-to or gable ridge.",
+            help="Plain = flat/dry.  Divided = temperate.  Pitched = cold/snow (gable).  Slanted = rainy/oceanic (lean-to).",
         )
         roof_style = roof_choice.lower()
 
@@ -906,6 +909,12 @@ with section_col:
                                                show_figures=show_figures, roof_style=roof_style))
                     else:
                         st.pyplot(plot_section_3d(result, W, H, D))
+                        st.download_button(
+                            "Export Rhino Script (.py)",
+                            data=export_section_3d_rhino(result, W, H, D, "dining"),
+                            file_name="dining_3d.py",
+                            mime="text/plain",
+                        )
                         _picker_result = result  # pass to picker_col
                         with st.expander("2D slice at depth z", expanded=False):
                             z_slice = st.slider(

@@ -18,11 +18,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from llm import chat_modify_dining, onboarding_to_spec
+from sites import site_to_roof_style
 from solver import solve
 from solver3d import solve3d
 from dwelling import solve_dwelling_3d, dwelling_sections_meta
 from drawing import plot_section, plot_plan_view
 from viewer3d import plot_section_3d, plot_dwelling_3d
+from export import export_section_3d_json
 
 app = FastAPI(title="Nomadic Engine API")
 
@@ -115,11 +117,11 @@ def _dining_W(dining_style: str, num_chairs: int, corridor_side: str, corridor_w
     return inner + (corridor_w if corridor_side != "none" else 0)
 
 
-# Default W for each non-dining section (inner cols + corridor_w where applicable)
+# Default W for each non-dining section — all locked to 8 for demo
 _SECTION_W = {
-    "kitchen": lambda cw: 5 + cw,   # inner 5 + corridor right
-    "living":  lambda cw: 7,         # compact full, no corridor by default
-    "bed":     lambda cw: 4 + cw,    # inner 4 + corridor right
+    "kitchen": lambda cw: 8,
+    "living":  lambda cw: 8,
+    "bed":     lambda cw: 8,
 }
 
 # Sections that always use corridor_right internally
@@ -128,39 +130,47 @@ _ALWAYS_CORR_RIGHT = {"kitchen", "bed"}
 _DEFAULT_DWELLING_SPEC = {
     "corridor_side": "right",
     "corridor_w": 2,
-    "W": 9,
+    "W": 8,
     "H": 7,
+    "roof_style": "pitched",
     "functions": [
-        {"type": "dining",  "d": 3, "seed": 46, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
-        {"type": "kitchen", "d": 3, "seed": 45, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
-        {"type": "living",  "d": 3, "seed": 44, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
-        {"type": "bed",     "d": 3, "seed": 42, "dining_style": "compact", "roof_style": "any", "living_combo": "full"},
+        {"type": "dining",  "d": 3, "seed": 46, "dining_style": "spacious", "roof_style": "pitched", "living_combo": "full"},
+        {"type": "kitchen", "d": 4, "seed": 45, "dining_style": "spacious", "roof_style": "pitched", "living_combo": "full"},
+        {"type": "living",  "d": 3, "seed": 44, "dining_style": "spacious", "roof_style": "pitched", "living_combo": "full"},
+        {"type": "bed",     "d": 4, "seed": 42, "dining_style": "spacious", "roof_style": "pitched", "living_combo": "full"},
     ],
 }
 
 
 def _merge_dining_into_dwelling(dining_spec: dict) -> dict:
     """Return a copy of _DEFAULT_DWELLING_SPEC with the dining function replaced
-    by the user's onboarding dining params.  Also updates H and corridor_side."""
+    by the user's onboarding dining params.  Also updates H, W, corridor_side, roof_style."""
     merged = copy.deepcopy(_DEFAULT_DWELLING_SPEC)
-    num_chairs = dining_spec.get("num_chairs", 2)
+    num_chairs    = dining_spec.get("num_chairs", 2)
     corridor_side = dining_spec.get("corridor_side", merged["corridor_side"])
     # solo always needs corridor
     if num_chairs == 1 and corridor_side == "none":
         corridor_side = "right"
+    corridor_w = dining_spec.get("corridor_w", merged["corridor_w"])
     merged["corridor_side"] = corridor_side
-    merged["corridor_w"]    = dining_spec.get("corridor_w", merged["corridor_w"])
+    merged["corridor_w"]    = corridor_w
     if "h" in dining_spec:
         # Cap dwelling H at 8 — kitchen/living/bed solvers get unstable above that.
         # The standalone dining tab still uses the full h from the spec.
         merged["H"] = min(int(dining_spec["h"]), 8)
+    # Roof locked to pitched — ignore whatever the LLM returned.
+    roof_style = "pitched"
+    merged["roof_style"] = roof_style
+    # Store dining W at dwelling level so living can match it.
+    dining_style = dining_spec.get("dining_style", "compact")
+    merged["W"] = _dining_W(dining_style, num_chairs, corridor_side, corridor_w)
+    # Propagate roof_style to every function so section renders are consistent.
     for fn in merged.get("functions", []):
+        fn["roof_style"] = roof_style
         if fn.get("type") == "dining":
-            for key in ("dining_style", "num_chairs", "d", "roof_style",
-                        "preferred_tags", "seed"):
+            for key in ("dining_style", "num_chairs", "d", "preferred_tags", "seed"):
                 if key in dining_spec:
                     fn[key] = dining_spec[key]
-            break
     return merged
 
 
@@ -214,7 +224,7 @@ def _render_section(spec: dict, section: str = "dining", view: str = "2D",
     H            = spec.get("h",             7)
     D            = spec.get("d",             3)
     seed         = spec.get("seed",          42)
-    roof_style   = spec.get("roof_style",    "any")
+    roof_style   = "pitched"  # locked for demo — all sections use pitched v1
     corridor_side = spec.get("corridor_side", "none")
     corridor_w   = spec.get("corridor_w",    2)
 
@@ -232,10 +242,25 @@ def _render_section(spec: dict, section: str = "dining", view: str = "2D",
     else:
         dining_style   = spec.get("dining_style", "compact")
         preferred_tags = []
-        W = spec.get("w", _SECTION_W[section](corridor_w))
-        solver_corr = "corridor_right" if section in _ALWAYS_CORR_RIGHT else (
-            f"corridor_{corridor_side}" if corridor_side in ("right", "left") else "none"
-        )
+        dwelling_w     = int(spec["w"]) if spec.get("w") else None
+
+        if section == "living":
+            # Living tracks dwelling W when it's wide enough for a corridor (≥8).
+            # Solo (W=6) falls back to W=7 without corridor — living solver minimum.
+            if dwelling_w and dwelling_w >= 8:
+                W = dwelling_w
+                solver_corr = f"corridor_{corridor_side}" if corridor_side in ("right", "left") else "none"
+            else:
+                W = 7
+                solver_corr = "none"
+        elif section in _ALWAYS_CORR_RIGHT:
+            if section == "kitchen":
+                corridor_w = 3  # inner_W=5 + corridor=3 = W=8
+            W = _SECTION_W[section](corridor_w)
+            solver_corr = "corridor_right"
+        else:
+            W = _SECTION_W[section](corridor_w)
+            solver_corr = f"corridor_{corridor_side}" if corridor_side in ("right", "left") else "none"
 
     if view == "3D":
         placed = solve3d(
@@ -308,6 +333,32 @@ def render(req: RenderRequest):
     return {"image_b64": image_b64}
 
 
+@app.post("/sections-3d-json")
+def sections_3d_json(req: RenderRequest):
+    """Return 3D segment data for a section as JSON (for Three.js tube rendering)."""
+    spec    = req.spec
+    section = req.section or "dining"
+
+    corridor_side = spec.get("corridor_side", "none")
+    corridor_w    = int(spec.get("corridor_w", 2))
+    corridor      = f"corridor_{corridor_side}" if corridor_side != "none" else "none"
+    H             = int(spec.get("h", 7))
+    D             = int(spec.get("d", 3))
+    seed          = int(spec.get("seed", 42))
+    dining_style  = spec.get("dining_style", "compact")
+    roof_style    = spec.get("roof_style", "any")
+    num_chairs    = int(spec.get("num_chairs", 2))
+
+    W = _dining_W(dining_style, num_chairs, corridor_side, corridor_w)
+
+    result = solve3d(W, H, D, seed, corridor, corridor_w,
+                     dining_style, roof_style, section=section)
+    if result is None:
+        return {"error": "no solution", "segments": []}
+
+    return export_section_3d_json(result, W, H, D, section)
+
+
 @app.post("/onboarding")
 def onboard(req: OnboardingRequest):
     params, err = onboarding_to_spec(req.site, req.answers)
@@ -318,10 +369,15 @@ def onboard(req: OnboardingRequest):
     params.setdefault("corridor_w",    2)
     params.setdefault("seed",          42)
 
+    # Demo locks: initial dining always starts at d=3, pitched roof.
+    params["d"]          = 3
+    params["roof_style"] = "pitched"
+
+    dwelling_spec = _merge_dining_into_dwelling(params)
     image_b64   = _render(params)
     reply       = _initial_greeting(req.site, req.answers, params)
     suggestions = _dining_suggestions(params, req.answers)
-    return {"spec": params, "image_b64": image_b64, "reply": reply, "suggestions": suggestions}
+    return {"spec": params, "dwelling_spec": dwelling_spec, "image_b64": image_b64, "reply": reply, "suggestions": suggestions}
 
 
 @app.post("/chat")

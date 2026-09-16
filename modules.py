@@ -916,6 +916,58 @@ MODULES: Dict[str, dict] = {
         "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W-0.5, 0.0)], "left": [], "right": []},
     },
 
+    # ── Divided-slanted shelf modules ─────────────────────────────────────────
+    # Slanted (lean-to) outer profile + one horizontal shelf line inside.
+    # Used when roof_style == "divided_slanted" (slanted site + corridor added).
+    "shelf_divided_slanted_left_v1": {
+        "id": "shelf_divided_slanted_left_v1", "w": 6, "h": 2, "zone": "shelf", "scalable": True,
+        "description": "Lean-to roof biased left (steep) with one horizontal shelf division.",
+        "tags": ["slanted", "left-biased", "steep", "divided"],
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 1.0), (0.5, 1.5)],
+            [(W-0.5, 0.0), (W-0.5, 1.0), (W-0.5, 1.5)],
+            [(0.5, 1.0), (W/3, 2.0), (W-0.5, 1.0)],
+            [(0.5, 1.5), (W-0.5, 1.5)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W-0.5, 0.0)], "left": [], "right": []},
+    },
+    "shelf_divided_slanted_left_v2": {
+        "id": "shelf_divided_slanted_left_v2", "w": 6, "h": 2, "zone": "shelf", "scalable": True,
+        "description": "Lean-to roof biased left (gentle) with one horizontal shelf division.",
+        "tags": ["slanted", "left-biased", "gentle", "divided"],
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 1.0), (0.5, 1.25)],
+            [(W-0.5, 0.0), (W-0.5, 1.0), (W-0.5, 1.25)],
+            [(0.5, 1.0), (W/3, 1.5), (W-0.5, 1.0)],
+            [(0.5, 1.25), (W-0.5, 1.25)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W-0.5, 0.0)], "left": [], "right": []},
+    },
+    "shelf_divided_slanted_right_v1": {
+        "id": "shelf_divided_slanted_right_v1", "w": 6, "h": 2, "zone": "shelf", "scalable": True,
+        "description": "Lean-to roof biased right (steep) with one horizontal shelf division.",
+        "tags": ["slanted", "right-biased", "steep", "divided"],
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 1.0), (0.5, 1.5)],
+            [(W-0.5, 0.0), (W-0.5, 1.0), (W-0.5, 1.5)],
+            [(0.5, 1.0), (2*W/3, 2.0), (W-0.5, 1.0)],
+            [(0.5, 1.5), (W-0.5, 1.5)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W-0.5, 0.0)], "left": [], "right": []},
+    },
+    "shelf_divided_slanted_right_v2": {
+        "id": "shelf_divided_slanted_right_v2", "w": 6, "h": 2, "zone": "shelf", "scalable": True,
+        "description": "Lean-to roof biased right (gentle) with one horizontal shelf division.",
+        "tags": ["slanted", "right-biased", "gentle", "divided"],
+        "segments_fn": lambda W: [
+            [(0.5, 0.0), (0.5, 1.0), (0.5, 1.25)],
+            [(W-0.5, 0.0), (W-0.5, 1.0), (W-0.5, 1.25)],
+            [(0.5, 1.0), (2*W/3, 1.5), (W-0.5, 1.0)],
+            [(0.5, 1.25), (W-0.5, 1.25)],
+        ],
+        "ports_fn": lambda W: {"top": [], "bottom": [(0.5, 0.0), (W-0.5, 0.0)], "left": [], "right": []},
+    },
+
     # ── Corridor modules ──────────────────────────────────────────────────────
     "corridor_right": {
         "id": "corridor_right", "w": 2, "h": 6, "zone": "corridor_right", "h_scalable": True,
@@ -1001,6 +1053,20 @@ MODULES: Dict[str, dict] = {
             [(2.0, 0.5), (3.0, 0.5)],
         ],
         "ports": {"top": [(0.5, 3.0)], "right": [(3.0, 0.5)], "bottom": [], "left": []},
+    },
+    # Through-counter — left exit joins left bank, right exit joins corridor, top at x=2.5
+    # so the filler chain at col 5 can reach the FRS shelf's post port at x=5.5.
+    "kitchen_lower_w3_h4_through": {
+        "id": "kitchen_lower_w3_h4_through", "w": 3, "h": 3, "zone": "lower_cabinet",
+        "description": "Kitchen right-bank counter — through variant with left + right exits for W=8 double-counter.",
+        "tags": ["kitchen", "lower-cabinet", "w3", "h4", "through"],
+        "segments": [
+            [(2.5, 3.0), (2.5, 2.5)],
+            [(2.5, 2.5), (0.5, 2.5), (0.5, 0.5), (1.0, 0.5), (2.5, 0.5), (2.5, 2.5)],
+            [(0.0, 0.5), (0.5, 0.5)],
+            [(1.0, 0.5), (3.0, 0.5)],
+        ],
+        "ports": {"top": [(2.5, 3.0)], "left": [(0.0, 0.5)], "right": [(3.0, 0.5)], "bottom": []},
     },
 
     # ── Kitchen: upper cabinet — fixed-height variants (narrow + wide body) ─────
@@ -1248,6 +1314,8 @@ ZONES = [
             "shelf_pitched_sym_v1",   "shelf_pitched_sym_v2",
             "shelf_pitched_left_v1",  "shelf_pitched_left_v2",
             "shelf_pitched_right_v1", "shelf_pitched_right_v2",
+            "shelf_divided_slanted_left_v1",  "shelf_divided_slanted_left_v2",
+            "shelf_divided_slanted_right_v1", "shelf_divided_slanted_right_v2",
         ],
     },
 ]
@@ -1383,24 +1451,29 @@ _TABLE_SPACIOUS = [m for m in ZONES[1]["modules"] if "wide-top"     in MODULES[m
 # Compact (inner_W=7): sofa+table+tv_table flush, table at "from 3 size 2".
 # Spacious (inner_W=9): 1-col gap each side, table at "from 4 size 2".
 
-# ── Shelf style groups (for dining roof_style filter) ────────────────────────
-# plain:   flat horizontal bar (h=1 or h=2 symmetric)
-# divided: internal subdivisions or hatching
-# pitched: gable ridge
+# ── Shelf style groups (for roof_style filter) ───────────────────────────────
+# plain:   flat horizontal bar — dry/arid climates
+# divided: internal subdivisions or hatching — temperate/moderate climates
+# pitched: symmetric gable ridge — cold/snowy/polar/alpine climates
+# slanted: lean-to directional — rainy/oceanic/tropical climates
 _SHELF_PLANE   = ["shelf_h1_v1", "shelf_h2_v1"]
 _SHELF_DIVIDED = ["shelf_h3_v1", "shelf_h3_v2", "shelf_h2_v4", "shelf_h2_v5"]
 _SHELF_PITCHED = [
-    "shelf_h2_v2", "shelf_h2_v3",
-    "shelf_pitched_sym_v1",   "shelf_pitched_sym_v2",
-    "shelf_pitched_left_v1",  "shelf_pitched_left_v2",
-    "shelf_pitched_right_v1", "shelf_pitched_right_v2",
+    "shelf_pitched_sym_v1",
+]
+_SHELF_SLANTED = []
+_SHELF_DIVIDED_SLANTED = [
+    "shelf_divided_slanted_left_v1",  "shelf_divided_slanted_left_v2",
+    "shelf_divided_slanted_right_v1", "shelf_divided_slanted_right_v2",
 ]
 
 # Maps base module ID (without _corr_r/_corr_l) → category string
 _SHELF_CATEGORY: dict = {
-    **{m: "plain"   for m in _SHELF_PLANE},
-    **{m: "divided" for m in _SHELF_DIVIDED},
-    **{m: "pitched" for m in _SHELF_PITCHED},
+    **{m: "plain"           for m in _SHELF_PLANE},
+    **{m: "divided"         for m in _SHELF_DIVIDED},
+    **{m: "pitched"         for m in _SHELF_PITCHED},
+    **{m: "slanted"         for m in _SHELF_SLANTED},
+    **{m: "divided_slanted" for m in _SHELF_DIVIDED_SLANTED},
 }
 
 # ── Kitchen zone configurations ───────────────────────────────────────────────
@@ -1418,6 +1491,15 @@ KITCHEN_ZONES_INNER_CORR_RIGHT = [
     KITCHEN_ZONES_INNER[0],
     KITCHEN_ZONES_INNER[1],
     {**KITCHEN_ZONES_INNER[2], "modules": ["corridor_right_short"]},
+]
+
+# W=8 variant (inner_W=6): double-sided counter — left bank + right bank (through).
+# Left bank: right exit at x=3.0 joins right bank left exit. Right bank through-module
+# also exits right to corridor at x=6.0. Top port at x=2.5 starts filler chain to FRS shelf.
+KITCHEN_ZONES_INNER_W6 = [
+    {"id": "lower_cabinet",   "x_rule": ["first 3"],       "y_rule": ["first 3"],          "modules": ["kitchen_lower_w3_h4_v2", "kitchen_lower_w3_h4_v3"]},
+    {"id": "lower_cabinet_r", "x_rule": ["from 3 size 3"], "y_rule": ["first 3"],          "modules": ["kitchen_lower_w3_h4_through"]},
+    {"id": "upper_cabinet",   "x_rule": ["first 2"],       "y_rule": ["from 3 to last 0"], "modules": ["kitchen_upper_w2_h1", "kitchen_upper_w2_h1_wide", "kitchen_upper_w2_h2", "kitchen_upper_w2_h2_wide", "kitchen_upper_w2_h3", "kitchen_upper_w2_h3_wide", "kitchen_upper_w2_h4", "kitchen_upper_w2_h4_wide"]},
 ]
 
 KITCHEN_ZONES_INNER_CORR_LEFT = [
@@ -1562,15 +1644,13 @@ LIVING_ZONES_CORR_LEFT = [
 LIVING_ZONES_INNER = [LIVING_ZONES[0], LIVING_ZONES[1], LIVING_ZONES[2]]
 
 LIVING_ZONES_INNER_CORR_RIGHT = [
-    LIVING_ZONES[0],
-    LIVING_ZONES[1],
-    {**LIVING_ZONES[2], "modules": _TV_CORR_R or ["tv_table_h2_v1"]},
+    LIVING_ZONES[0],  # sofa
+    LIVING_ZONES[1],  # table; no tv_table — overlaps table at inner_W=6
 ]
 
 LIVING_ZONES_INNER_CORR_LEFT = [
     {**LIVING_ZONES[0], "modules": _SOFA_CORR_L or ["sofa_h3_v1"]},
-    LIVING_ZONES[1],
-    LIVING_ZONES[2],
+    LIVING_ZONES[1],  # table; no tv_table
 ]
 
 # ── Living sub-combination zone configs ──────────────────────────────────────
@@ -1602,9 +1682,9 @@ LIVING_ZONES_SOFA_TV_INNER_CORR_RIGHT = [
 # ── Bed zone configuration ────────────────────────────────────────────────────
 # Shelf is always pre-placed by the solver; only the bed zone is solved here.
 BED_ZONES_INNER = [
-    {"id": "bed", "x_rule": ["first 6", "first 5", "first 4", "first 3"],
+    {"id": "bed", "x_rule": ["first 6"],
      "y_rule": ["first 2"],
-     "modules": ["bed_v1", "bed_v2", "bed_v3", "bed_v4", "bed_v5"]},
+     "modules": ["bed_v5"]},
 ]
 
 # Used by drawing.py to order zones in the module library view
