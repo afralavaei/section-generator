@@ -9,6 +9,8 @@ This produces explicit static 3D coordinates (not lazy-computed at render time).
 from typing import Dict
 from functools import lru_cache
 
+from modules import _SHELF_CATEGORY, _spacious_short_segs
+
 FACES_3D = ("left", "right", "bottom", "top", "front", "back")
 
 
@@ -674,6 +676,19 @@ def _corr_l_short_ports(w, h, d):
     return _ports_lift({"left": [], "right": [(float(w), 0.5)], "top": [(0.5, h)], "bottom": []}, d=d)
 
 
+def _corr_r_spacious_short_segs(w, h, d):
+    """Spacious short right corridor: same L-wall + internal shelves as the 2D
+    spacious corridor (_spacious_short_segs), lifted to 3D. Same ports as the
+    plain short variant — only the internal geometry differs."""
+    return _lift2d(_spacious_short_segs(w, h, "right"), d=d,
+                   ex={(0.0, 0.5), (w - 0.5, float(h))})
+
+def _corr_l_spacious_short_segs(w, h, d):
+    """Spacious short left corridor — mirror of _corr_r_spacious_short_segs."""
+    return _lift2d(_spacious_short_segs(w, h, "left"), d=d,
+                   ex={(float(w), 0.5), (0.5, float(h))})
+
+
 # ── Lifted shelf modules (scalable_w=True → fit any section width) ───────────
 
 MODULES_3D.update({
@@ -857,6 +872,30 @@ MODULES_3D.update({
         "whd_ports_fn":    _corr_l_short_ports,
     },
 
+    "corridor_right_3d_spacious_short": {
+        "id": "corridor_right_3d_spacious_short", "w": 4, "h": 6, "d": 3,
+        "zone": "corridor_right",
+        "scalable_w": True, "scalable_h": True,
+        "description": "Spacious short right corridor — internal shelves + outer wall to shelf, left port + top port.",
+        "tags": ["lifted", "corridor", "right", "spacious", "short"],
+        "segments": [],
+        "ports": {face: [] for face in FACES_3D},
+        "whd_segments_fn": _corr_r_spacious_short_segs,
+        "whd_ports_fn":    _corr_r_short_ports,
+    },
+
+    "corridor_left_3d_spacious_short": {
+        "id": "corridor_left_3d_spacious_short", "w": 4, "h": 6, "d": 3,
+        "zone": "corridor_left",
+        "scalable_w": True, "scalable_h": True,
+        "description": "Spacious short left corridor — internal shelves + outer wall to shelf, right port + top port.",
+        "tags": ["lifted", "corridor", "left", "spacious", "short"],
+        "segments": [],
+        "ports": {face: [] for face in FACES_3D},
+        "whd_segments_fn": _corr_l_spacious_short_segs,
+        "whd_ports_fn":    _corr_l_short_ports,
+    },
+
     # ── Sofa (Living) ─────────────────────────────────────────────────────────
 
     "sofa_h3_v4_3d": {
@@ -991,21 +1030,9 @@ MODULES_3D.update({
 })
 
 
-# ── Shelf style categories (for roof_style filter in solver3d) ────────────────
-# plain:   flat horizontal bar
-# divided: internal subdivisions
-# pitched: gable ridge
-
-_SHELF_CAT_3D: dict = {
-    "shelf_h1_v1":         "plain",
-    "shelf_h2_v1":         "plain",
-    "shelf_h2_v2":         "plain",
-    "shelf_h2_v3":         "plain",
-    "shelf_pitched_sym_v1":"pitched",
-    "shelf_h3_v1":         "divided",
-    "shelf_h3_v2":         "plain",
-    "roof_3d_v1":          "plain",
-}
+# _SHELF_CAT_3D is derived below (after the _corr_r/_corr_l shelf variants are
+# defined) directly from modules.py's _SHELF_CATEGORY, so the two never drift
+# out of sync with each other again.
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -1253,18 +1280,26 @@ MODULES_3D.update({
 })
 
 
-# ── Shelf style categories (for corr variants) ────────────────────────────────
+# ── Shelf style categories (for roof_style filter in solver3d) ────────────────
+# Derived from modules.py's _SHELF_CATEGORY (the corrected, single source of
+# truth for plain/divided/pitched/slanted) by stripping the _corr_r/_corr_l
+# suffix and looking up the base 2D module id — every 3D shelf module shares
+# its id with the 2D module it was lifted from, so this always stays in sync.
 
-_SHELF_CAT_3D.update({
-    "shelf_h1_v1_corr_r":  "plain",
-    "shelf_h2_v1_corr_r":  "plain",
-    "shelf_h2_v3_corr_r":  "pitched",
-    "shelf_h3_v1_corr_r":  "divided",
-    "shelf_h1_v1_corr_l":  "plain",
-    "shelf_h2_v1_corr_l":  "plain",
-    "shelf_h2_v2_corr_l":  "pitched",
-    "shelf_h3_v1_corr_l":  "divided",
-})
+def _shelf_cat_3d(mid: str) -> str:
+    base = mid
+    for suf in ("_corr_r", "_corr_l"):
+        if base.endswith(suf):
+            base = base[: -len(suf)]
+            break
+    return _SHELF_CATEGORY.get(base, "any")
+
+
+_SHELF_CAT_3D: dict = {
+    mid: _shelf_cat_3d(mid)
+    for mid, m in MODULES_3D.items()
+    if m.get("zone") == "shelf" and not mid.startswith("_frs3d_")
+}
 
 
 ZONES_3D_CORR_RIGHT = [

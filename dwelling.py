@@ -17,7 +17,7 @@ _SECTION_INNER_W = {
     "dining":  6,   # compact 2-chair layout
     "kitchen": 4,   # cabinet block (3 cols) + 1 filler col
     "living":  7,   # compact full layout
-    "bed":     4,   # bed module width
+    "bed":     6,   # bed module width (bed_v5, BED_ZONES_INNER "first 6")
     "bath":    6,   # bath interior
 }
 

@@ -7,11 +7,13 @@ from drawing import plot_section, plot_module_library, plot_plan_view, _SECTION_
 from dwelling import solve_dwelling_2d, solve_dwelling_3d
 from solver3d import solve3d, check_adjacency_3d, check_circuit_3d
 from viewer3d import plot_section_3d, plot_module_library_3d, plot_slice_2d, plot_dwelling_3d, _draw_module_3d, get_library_3d_by_zone, plot_zone_group_3d
-from modules3d import MODULES_3D
+from modules3d import MODULES_3D, _SHELF_CAT_3D
 import llm
 from llm import chat_modify_dining, onboarding_to_spec
 from sites import SITES, REGIONS, get_site, sites_by_region, site_to_roof_style
 from export import export_section_3d_rhino
+from modules import MODULES
+from scorecard_constants import SEAT_HEIGHT_BY_CLASS_CM, TABLE_HEIGHT_BY_CLASS_CM
 
 _MODULES_PATH   = os.path.join(os.path.dirname(__file__), "modules.py")
 _DRAWING_PATH   = os.path.join(os.path.dirname(__file__), "drawing.py")
@@ -117,7 +119,190 @@ def _table_options(h_val: int, wide_top: bool, d_val: int) -> list[str]:
     return sorted(results)
 
 
+def _shelf_suffix(mid: str) -> str:
+    for suf in ("_corr_r", "_corr_l"):
+        if mid.endswith(suf):
+            return suf
+    return ""
+
+
+def _shelf_base_id(shelf_mid: str) -> str | None:
+    """Resolve a placed shelf's module_id back to a catalog id — placed shelves
+    are sometimes a runtime-generated full-roof variant (``_frs3d_<base>_...``)."""
+    if not shelf_mid.startswith("_frs3d_"):
+        return shelf_mid
+    rest = shelf_mid[len("_frs3d_"):]
+    candidates = [k for k in _SHELF_CAT_3D if rest.startswith(k + "_")]
+    return max(candidates, key=len) if candidates else None
+
+
+def _shelf_options(shelf_mid: str, h_val: int, d_val: int) -> list[str]:
+    """Return shelf module IDs in the same roof-style category as shelf_mid
+    (e.g. all 'divided' variants if the current shelf is divided), matching h/d
+    and which side (if any) of a corridor the current shelf is built for."""
+    base = _shelf_base_id(shelf_mid)
+    if base is None:
+        return []
+    category = _SHELF_CAT_3D.get(base)
+    if not category or category == "any":
+        return []
+    suffix = _shelf_suffix(base)
+    results = []
+    for mid, m in MODULES_3D.items():
+        if (m.get("zone") == "shelf"
+                and not mid.startswith("_frs3d_")
+                and _shelf_suffix(mid) == suffix
+                and _SHELF_CAT_3D.get(mid) == category
+                and m.get("h") == h_val):
+            d_ok = m.get("scalable_d") or "whd_segments_fn" in m or m.get("d", 3) == d_val
+            if d_ok:
+                results.append(mid)
+    return sorted(results)
+
+
+def _picker_grid(section_key: str, options: list[str], current: str,
+                 strip_parts: list[str], mtime3d: float, n_cols: int = 2) -> str | None:
+    """Render a compact multi-column grid of thumbnail+button picks.
+    Returns the clicked module_id this run, or None."""
+    clicked = None
+    cols = st.columns(n_cols)
+    for i, mid in enumerate(options):
+        label = mid
+        for part in strip_parts:
+            label = label.replace(part, "")
+        label = label.strip("_") or mid
+        is_active = mid == current
+        with cols[i % n_cols]:
+            st.image(_furniture_thumbnail_png(mid, mtime3d), use_container_width=True)
+            if st.button(label, key=f"pick_{section_key}_{mid}",
+                         type="primary" if is_active else "secondary",
+                         use_container_width=True):
+                clicked = mid
+    return clicked
+
+
+GRID_SIZES_CM = [20, 30, 40, 50]
+
+
+def _grid_comparison_classes(result: list[dict]) -> tuple[int | None, int | None]:
+    """Pull the cell-height (2 or 3) of the placed chair and table modules out of a
+    solved dining result — this is the 'h2'/'h3' class scorecard_constants keys on."""
+    chair_h_cells = table_h_cells = None
+    for p in result:
+        zone = MODULES[p["module_id"]]["zone"]
+        if zone in ("chair_left", "chair_right") and chair_h_cells is None:
+            chair_h_cells = p["h"]
+        elif zone == "table" and table_h_cells is None:
+            table_h_cells = p["h"]
+    return chair_h_cells, table_h_cells
+
+
+def _render_grid_comparison(result: list[dict], W: int, H: int, roof_style: str,
+                            corridor: str, corridor_w: int, show_figures: bool) -> None:
+    """Render the same solved dining schematic at four candidate grid pitches (cm/cell)
+    and compare the resulting real-world dimensions against ergonomic targets."""
+    st.caption(
+        "Same solved layout — same W × H cell grid, same module choices — rebuilt at four "
+        "different real-world grid pitches. The 2D schematic never changes; only how many "
+        "centimetres each cell is worth does."
+    )
+
+    chair_h_cells, table_h_cells = _grid_comparison_classes(result)
+    chair_target = SEAT_HEIGHT_BY_CLASS_CM.get(f"h{chair_h_cells}") if chair_h_cells else None
+    table_target = TABLE_HEIGHT_BY_CLASS_CM.get(f"h{table_h_cells}") if table_h_cells else None
+    corridor_w_cells = corridor_w if corridor != "none" else None
+
+    max_footprint_w = W * max(GRID_SIZES_CM)
+    px_per_cm = min(2.4, 260 / max_footprint_w)
+
+    rows = []
+    cols = st.columns(len(GRID_SIZES_CM))
+    for grid_cm, col in zip(GRID_SIZES_CM, cols):
+        footprint_w = W * grid_cm
+        footprint_h = H * grid_cm
+        chair_real = chair_h_cells * grid_cm if chair_h_cells else None
+        table_real = table_h_cells * grid_cm if table_h_cells else None
+        corridor_real = corridor_w_cells * grid_cm if corridor_w_cells else None
+        delta_chair = (chair_real - chair_target) if (chair_real is not None and chair_target is not None) else None
+        delta_table = (table_real - table_target) if (table_real is not None and table_target is not None) else None
+
+        with col:
+            label = f"**{grid_cm} cm**" + ("  ·  current" if grid_cm == 40 else "")
+            st.markdown(label)
+            fig = plot_section(result, W, H, show_figures=show_figures, roof_style=roof_style)
+            buf = io.BytesIO()
+            fig.savefig(buf, format="png", dpi=100, bbox_inches="tight")
+            import matplotlib.pyplot as plt
+            plt.close(fig)
+            st.image(buf.getvalue(), width=max(60, round(footprint_w * px_per_cm)))
+            st.caption(f"{footprint_w:.0f} × {footprint_h:.0f} cm")
+
+        rows.append({
+            "Grid (cm/cell)":     grid_cm,
+            "Footprint (cm)":     f"{footprint_w:.0f} × {footprint_h:.0f}",
+            "Chair seat ht (cm)": round(chair_real) if chair_real is not None else None,
+            "Chair Δ (cm)":       round(delta_chair) if delta_chair is not None else None,
+            "Table ht (cm)":      round(table_real) if table_real is not None else None,
+            "Table Δ (cm)":       round(delta_table) if delta_table is not None else None,
+            "Corridor width (cm)": round(corridor_real) if corridor_real is not None else None,
+        })
+
+    st.dataframe(rows, use_container_width=True, hide_index=True)
+
+    target_bits = []
+    if chair_target is not None:
+        target_bits.append(f"chair seat **{chair_target:.0f} cm**")
+    if table_target is not None:
+        target_bits.append(f"table height **{table_target:.0f} cm**")
+    if target_bits:
+        st.caption("Ergonomic targets (scorecard_constants.py): " + " · ".join(target_bits))
+
+    if chair_target is not None and table_target is not None and chair_h_cells and table_h_cells:
+        best_grid = min(
+            GRID_SIZES_CM,
+            key=lambda g: abs(g * chair_h_cells - chair_target) + abs(g * table_h_cells - table_target),
+        )
+        st.info(
+            f"Closest ergonomic fit across chair + table: **{best_grid} cm** grid. "
+            f"The system's actual grid is **40 cm**."
+        )
+
+
 st.set_page_config(page_title="Nomadic Engine", layout="wide")
+
+# ── Compact layout — shrink spacing/type so the app fits without scrolling ────
+st.markdown("""
+<style>
+  /* Streamlit's fixed top header (~3.75rem) sits over the content; padding-top
+     must clear it or the first heading renders hidden underneath it. */
+  .block-container { padding-top: 3.5rem !important; padding-bottom: 1rem !important; }
+  section[data-testid="stSidebar"] .block-container { padding-top: 2rem !important; }
+
+  h1 { font-size: 1.5rem !important; margin: 0 0 0.3rem !important; }
+  h2 { font-size: 1.1rem !important; margin: 0.3rem 0 !important; }
+  h3, h4 { font-size: 0.95rem !important; margin: 0.25rem 0 !important; }
+
+  div[data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
+  div[data-testid="stHorizontalBlock"] { gap: 0.6rem !important; }
+  div[data-testid="stVerticalBlockBorderWrapper"] { gap: 0.3rem !important; }
+
+  html, body, [class*="css"] { font-size: 13.5px !important; }
+  div[data-testid="stMarkdownContainer"] p { margin-bottom: 0.25rem !important; }
+
+  .stButton > button, .stDownloadButton > button {
+    padding: 0.25rem 0.7rem !important; font-size: 12.5px !important; min-height: 1.8rem !important;
+  }
+  .stRadio [role="radiogroup"] { gap: 0.3rem !important; }
+  .stRadio label, .stCheckbox label { font-size: 13px !important; }
+  .stSlider, .stNumberInput, .stSelectbox, .stTextInput { margin-bottom: 0.1rem !important; }
+
+  hr { margin: 0.5rem 0 !important; }
+  [data-testid="stExpander"] summary { padding: 0.3rem 0.6rem !important; font-size: 13px !important; }
+
+  /* cap rendered figure/thumbnail height so plots don't push the page into a scroll */
+  div[data-testid="stImage"] img { max-height: 46vh !important; width: auto !important; }
+</style>
+""", unsafe_allow_html=True)
 
 # ── Session state ─────────────────────────────────────────────────────────────
 if "onboarding_complete" not in st.session_state:
@@ -735,7 +920,7 @@ with st.sidebar:
         W = _dw_W  # so H/D block below has a value for W
         roof_style = "any"
     else:  # Bed
-        _inner_w_b = 4  # bed (4 cols) fills inner zone; corridor always on right
+        _inner_w_b = 6  # bed_v5 is 6 cols wide (BED_ZONES_INNER "first 6"); corridor always on right
         W = _inner_w_b + corridor_w
         st.caption(f"Section: **{W} × H**  ({_inner_w_b} bed + {corridor_w} corridor)")
 
@@ -767,9 +952,16 @@ with st.sidebar:
                 "Height H", min_value=7, max_value=11, value=7, step=1,
                 help="Grid height in cells.",
             ))
+            # Bed defaults to 6 — the front-view bed modules (bed_v1..v4) are a
+            # side profile extruded along D, so D *is* the bed's own length;
+            # z_rule="full" always stretches the bed to fill whatever D is set,
+            # so a too-small D (the generic default of 3) renders a squashed bed.
+            _default_D = 6 if section_type == "Bed" else 3
             D = int(st.number_input(
-                "Depth D", min_value=2, max_value=9, value=3, step=1,
-                help="Depth in cells (2–9).",
+                "Depth D", min_value=2, max_value=9, value=_default_D, step=1,
+                help=("Depth in cells (2–9). A front-view bed's own length equals "
+                      "this — 6 matches a real bed; lower values will squash it."
+                      if section_type == "Bed" else "Depth in cells (2–9)."),
             ))
         else:
             H = int(st.number_input(
@@ -785,7 +977,7 @@ chat_col, section_col, picker_col = st.columns([1.4, 2.1, 0.7], gap="medium")
 # ── Chat column ───────────────────────────────────────────────────────────────
 with chat_col:
     st.markdown("**Chat**")
-    with st.container(height=520, border=True):
+    with st.container(height=380, border=True):
         if not st.session_state.chat_history:
             st.caption("No messages yet — describe your dining space below.")
         for msg in st.session_state.chat_history:
@@ -839,7 +1031,7 @@ with chat_col:
 
 # ── Section column ─────────────────────────────────────────────────────────────
 with section_col:
-    tab_sec, tab_lib = st.tabs(["Section", "Module Library"])
+    tab_sec, tab_lib, tab_grid = st.tabs(["Section", "Module Library", "Grid Comparison"])
 
     # ── Module Library tab ────────────────────────────────────────────────────
     with tab_lib:
@@ -1128,6 +1320,22 @@ with section_col:
                     st.write(f"Adjacency check: {'✓ pass' if ok_adj else '✗ fail'}")
                     st.write(f"Closed circuit:  {'✓ pass' if ok_cir else '✗ fail'}")
 
+    # ── Grid Comparison tab ────────────────────────────────────────────────────
+    with tab_grid:
+        if section_type != "Dining":
+            st.info("Grid comparison is currently available for the Dining section only.")
+        elif num_chairs == 1 and corridor == "none":
+            st.info("Set a valid dining configuration in the Section tab first (1-chair mode needs a corridor).")
+        else:
+            _preferred_cmp = st.session_state.dining_spec.get("preferred_tags", [])
+            with st.spinner("Solving…"):
+                _cmp_result = solve(W, H, seed, corridor, corridor_w, dining_style, roof_style,
+                                    preferred_tags=_preferred_cmp)
+            if _cmp_result is None:
+                st.warning("No valid section found for this configuration — try a different seed.")
+            else:
+                _render_grid_comparison(_cmp_result, W, H, roof_style, corridor, corridor_w, show_figures)
+
 # ── Picker column (right) ─────────────────────────────────────────────────────
 with picker_col:
     if _picker_result and mode == "3D":
@@ -1145,19 +1353,16 @@ with picker_col:
                 st.markdown("**Chair style**")
                 current_left = st.session_state.module_overrides.get(
                     "chair_left", placed_cl["module_id"])
-                for left_mid, right_mid in ch_opts:
-                    label = (left_mid
-                             .replace("chair_left_", "")
-                             .replace(f"h{h_val}_", ""))
-                    is_active = left_mid == current_left
-                    st.image(_furniture_thumbnail_png(left_mid, _mtime3d),
-                             use_container_width=True)
-                    if st.button(label, key=f"pick_chair_{left_mid}",
-                                 type="primary" if is_active else "secondary",
-                                 use_container_width=True):
-                        st.session_state.module_overrides["chair_left"]  = left_mid
-                        st.session_state.module_overrides["chair_right"] = right_mid
-                        st.rerun()
+                left_ids = [left_mid for left_mid, _right_mid in ch_opts]
+                clicked = _picker_grid(
+                    "chair", left_ids, current_left,
+                    ["chair_left_", f"h{h_val}_"], _mtime3d,
+                )
+                if clicked:
+                    right_mid = next(r for l, r in ch_opts if l == clicked)
+                    st.session_state.module_overrides["chair_left"]  = clicked
+                    st.session_state.module_overrides["chair_right"] = right_mid
+                    st.rerun()
 
         st.divider()
 
@@ -1174,14 +1379,35 @@ with picker_col:
             if len(t_opts) > 1:
                 st.markdown("**Table style**")
                 current_t = st.session_state.module_overrides.get("table", t_mid)
-                for tmid in t_opts:
-                    label = (tmid
-                             .replace("table_", "")
-                             .replace(f"h{t_h}_", ""))
-                    st.image(_furniture_thumbnail_png(tmid, _mtime3d),
-                             use_container_width=True)
-                    if st.button(label, key=f"pick_table_{tmid}",
-                                 type="primary" if tmid == current_t else "secondary",
-                                 use_container_width=True):
-                        st.session_state.module_overrides["table"] = tmid
-                        st.rerun()
+                clicked = _picker_grid(
+                    "table", t_opts, current_t,
+                    ["table_", f"h{t_h}_"], _mtime3d,
+                )
+                if clicked:
+                    st.session_state.module_overrides["table"] = clicked
+                    st.rerun()
+
+        st.divider()
+
+        # ── Shelf / roof style ────────────────────────────────────────────────
+        # Locked to the current shelf's roof-style category — e.g. if the
+        # placed shelf is "divided", only other "divided" variants are offered.
+        placed_sh = next(
+            (p for p in _picker_result
+             if MODULES_3D.get(p["module_id"], {}).get("zone") == "shelf"),
+            None)
+        if placed_sh:
+            sh_mid = placed_sh["module_id"]
+            sh_h   = placed_sh["h"]
+            sh_opts = _shelf_options(sh_mid, sh_h, D)
+            if len(sh_opts) > 1:
+                st.markdown("**Shelf / roof style**")
+                current_sh = st.session_state.module_overrides.get(
+                    "shelf", _shelf_base_id(sh_mid) or sh_mid)
+                clicked = _picker_grid(
+                    "shelf", sh_opts, current_sh,
+                    ["shelf_"], _mtime3d,
+                )
+                if clicked:
+                    st.session_state.module_overrides["shelf"] = clicked
+                    st.rerun()

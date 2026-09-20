@@ -28,6 +28,13 @@ ZONE_ALPHAS = {
     "corridor_right": 0.20,
     "chair_left":     0.20,
     "chair_right":    0.20,
+    "sofa":           0.20,
+    "tv_table":       0.20,
+    "shelf":          0.20,
+    "lower_cabinet":  0.20,
+    "upper_cabinet":  0.20,
+    "kitchen_wall":   0.20,
+    "bed":            0.20,
 }
 
 # ── Module Library ────────────────────────────────────────────────────────────
@@ -1459,9 +1466,11 @@ _TABLE_SPACIOUS = [m for m in ZONES[1]["modules"] if "wide-top"     in MODULES[m
 _SHELF_PLANE   = ["shelf_h1_v1", "shelf_h2_v1"]
 _SHELF_DIVIDED = ["shelf_h3_v1", "shelf_h3_v2", "shelf_h2_v4", "shelf_h2_v5"]
 _SHELF_PITCHED = [
-    "shelf_pitched_sym_v1",
+    "shelf_pitched_sym_v1",  "shelf_pitched_sym_v2",
+    "shelf_pitched_left_v1", "shelf_pitched_left_v2",
+    "shelf_pitched_right_v1", "shelf_pitched_right_v2",
 ]
-_SHELF_SLANTED = []
+_SHELF_SLANTED = ["shelf_h2_v2", "shelf_h2_v3"]
 _SHELF_DIVIDED_SLANTED = [
     "shelf_divided_slanted_left_v1",  "shelf_divided_slanted_left_v2",
     "shelf_divided_slanted_right_v1", "shelf_divided_slanted_right_v2",

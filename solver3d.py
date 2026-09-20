@@ -321,6 +321,15 @@ def _make_full_roof_shelf_3d(shelf_mid: str, W: int, x_post: float, D: int = 3) 
 
 # ── solve3d ───────────────────────────────────────────────────────────────────
 
+def _corr_short_id(side: str, corridor_w: int) -> str:
+    """Short corridor module id for this side, spacious (internal shelves) at
+    corridor_w >= 4, matching the plain/spacious split solver.py uses in 2D."""
+    spacious = corridor_w >= 4
+    if side == "right":
+        return "corridor_right_3d_spacious_short" if spacious else "corridor_right_3d_short"
+    return "corridor_left_3d_spacious_short" if spacious else "corridor_left_3d_short"
+
+
 def solve3d(W: int, H: int, D: int, seed: int,
             corridor: str = "none", corridor_w: int = 2,
             dining_style: str = "compact", roof_style: str = "any",
@@ -335,7 +344,6 @@ def solve3d(W: int, H: int, D: int, seed: int,
     if section == "kitchen":
         # Corridor always on the right — same full-roof approach as dining 3D.
         inner_W, x_offset = W - corridor_w, 0
-        spacious_k3d = corridor_w >= 4
 
         _wide_k3d = rng.choice([True, False])
         _upper_3d_narrow = ["kitchen_upper_w2_h1_3d", "kitchen_upper_w2_h2_3d",
@@ -376,7 +384,7 @@ def solve3d(W: int, H: int, D: int, seed: int,
         base_zones_k3d = KITCHEN_ZONES_INNER_W6_3D if inner_W >= 6 else KITCHEN_ZONES_INNER_3D
         active_zones_k = _pair_k3d(base_zones_k3d)
         placed: List[dict] = [
-            {"module_id": "corridor_right_3d_short",
+            {"module_id": _corr_short_id("right", corridor_w),
              "x_off": float(inner_W), "y_off": 0.0, "z_off": 0.0,
              "w": corridor_w, "h": H_solve_k, "d": D},
             {"module_id": shelf_mid,
@@ -480,11 +488,11 @@ def solve3d(W: int, H: int, D: int, seed: int,
              "w": W, "h": shelf_h_b, "d": D},
         ]
         if corridor == "corridor_right":
-            placed.insert(0, {"module_id": "corridor_right_3d_short",
+            placed.insert(0, {"module_id": _corr_short_id("right", corridor_w),
                                "x_off": float(inner_W), "y_off": 0.0, "z_off": 0.0,
                                "w": corridor_w, "h": H_solve_b3d, "d": D})
         elif corridor == "corridor_left":
-            placed.insert(0, {"module_id": "corridor_left_3d_short",
+            placed.insert(0, {"module_id": _corr_short_id("left", corridor_w),
                                "x_off": 0.0, "y_off": 0.0, "z_off": 0.0,
                                "w": corridor_w, "h": H_solve_b3d, "d": D})
 
@@ -583,11 +591,11 @@ def solve3d(W: int, H: int, D: int, seed: int,
              "w": W, "h": shelf_h_ba, "d": D},
         ]
         if corridor == "corridor_right":
-            placed.insert(0, {"module_id": "corridor_right_3d_short",
+            placed.insert(0, {"module_id": _corr_short_id("right", corridor_w),
                                "x_off": float(inner_W), "y_off": 0.0, "z_off": 0.0,
                                "w": corridor_w, "h": H_solve_ba3d, "d": D})
         elif corridor == "corridor_left":
-            placed.insert(0, {"module_id": "corridor_left_3d_short",
+            placed.insert(0, {"module_id": _corr_short_id("left", corridor_w),
                                "x_off": 0.0, "y_off": 0.0, "z_off": 0.0,
                                "w": corridor_w, "h": H_solve_ba3d, "d": D})
 
@@ -636,7 +644,7 @@ def solve3d(W: int, H: int, D: int, seed: int,
             shelf_mid = rng.choice(by_h[shelf_h])
             H_solve = H - shelf_h
             corr_x = float(inner_W) if corridor == "corridor_right" else 0.0
-            corr_mid = "corridor_right_3d_short" if corridor == "corridor_right" else "corridor_left_3d_short"
+            corr_mid = _corr_short_id("right" if corridor == "corridor_right" else "left", corridor_w)
             placed.extend([
                 {"module_id": corr_mid,  "x_off": corr_x, "y_off": 0.0, "z_off": 0.0,
                  "w": corridor_w, "h": H_solve, "d": D},
@@ -729,31 +737,38 @@ def solve3d(W: int, H: int, D: int, seed: int,
 
     if corridor in ("corridor_right", "corridor_left"):
         # Full-roof: pick shelf, place short corridor beneath it.
-        shelf_pool = [mid for mid, m in MODULES_3D.items()
-                      if m.get("zone") == "shelf"
-                      and not mid.endswith(("_corr_r", "_corr_l"))
-                      and "frs3d" not in mid]
-        if roof_style != "any":
-            shelf_pool = [m for m in shelf_pool if _SHELF_CAT_3D.get(m, "any") == roof_style]
-        rng.shuffle(shelf_pool)
-        by_h: dict = {}
-        for mid in shelf_pool:
-            sh = MODULES_3D[mid]["h"]
-            if H - sh >= 3:
-                by_h.setdefault(sh, []).append(mid)
-        if not by_h:
-            return None
-        # Pin shelf height to 2 for all dining styles. Keeps 2D/3D structurally aligned.
-        # (compact vs spacious is expressed in furniture height, not the shelf.)
-        shelf_h = 2 if 2 in by_h else rng.choice(list(by_h.keys()))
-        shelf_mid = rng.choice(by_h[shelf_h])
+        _shelf_override = (zone_overrides or {}).get("shelf")
+        if (_shelf_override and _shelf_override in MODULES_3D
+                and MODULES_3D[_shelf_override].get("zone") == "shelf"
+                and H - MODULES_3D[_shelf_override]["h"] >= 3):
+            shelf_mid = _shelf_override
+            shelf_h = MODULES_3D[shelf_mid]["h"]
+        else:
+            shelf_pool = [mid for mid, m in MODULES_3D.items()
+                          if m.get("zone") == "shelf"
+                          and not mid.endswith(("_corr_r", "_corr_l"))
+                          and "frs3d" not in mid]
+            if roof_style != "any":
+                shelf_pool = [m for m in shelf_pool if _SHELF_CAT_3D.get(m, "any") == roof_style]
+            rng.shuffle(shelf_pool)
+            by_h: dict = {}
+            for mid in shelf_pool:
+                sh = MODULES_3D[mid]["h"]
+                if H - sh >= 3:
+                    by_h.setdefault(sh, []).append(mid)
+            if not by_h:
+                return None
+            # Pin shelf height to 2 for all dining styles. Keeps 2D/3D structurally aligned.
+            # (compact vs spacious is expressed in furniture height, not the shelf.)
+            shelf_h = 2 if 2 in by_h else rng.choice(list(by_h.keys()))
+            shelf_mid = rng.choice(by_h[shelf_h])
         if inner_W >= 6:
             x_post = float(inner_W) - 0.5 if corridor == "corridor_right" else float(corridor_w) + 0.5
             shelf_mid = _make_full_roof_shelf_3d(shelf_mid, W, x_post, D)
         H_solve = H - shelf_h
         if corridor == "corridor_right":
             placed: List[dict] = [
-                {"module_id": "corridor_right_3d_short",
+                {"module_id": _corr_short_id("right", corridor_w),
                  "x_off": float(inner_W), "y_off": 0.0, "z_off": 0.0,
                  "w": corridor_w, "h": H_solve, "d": D},
                 {"module_id": shelf_mid,
@@ -764,7 +779,7 @@ def solve3d(W: int, H: int, D: int, seed: int,
                                 else ZONES_3D_FULL_ROOF_CORR_RIGHT_1CHAIR)
         else:
             placed: List[dict] = [
-                {"module_id": "corridor_left_3d_short",
+                {"module_id": _corr_short_id("left", corridor_w),
                  "x_off": 0.0, "y_off": 0.0, "z_off": 0.0,
                  "w": corridor_w, "h": H_solve, "d": D},
                 {"module_id": shelf_mid,
