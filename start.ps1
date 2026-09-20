@@ -1,13 +1,25 @@
 # Nomadic Engine startup script
 # Starts: FastAPI (8000) + Streamlit (8501) + React UI (5173)
-# Run with:
-#   powershell -ExecutionPolicy Bypass -File "d:\Bartlett\RC 5\Studio\Term 3\1\sections\start.ps1"
+# Run from this folder:
+#   powershell -ExecutionPolicy Bypass -File .\start.ps1
 
-$PYTHON    = "C:\Users\Afra Lavaei\AppData\Local\Python\pythoncore-3.14-64\python.exe"
-$STREAMLIT = "C:\Users\Afra Lavaei\AppData\Local\Python\pythoncore-3.14-64\Scripts\streamlit.exe"
-$NPM       = "C:\Program Files\nodejs\npm.cmd"
-$BACKEND   = "d:\Bartlett\RC 5\Studio\Term 3\1\sections"
-$FRONTEND  = "d:\Bartlett\RC 5\Studio\Term 3\1\sections\nomadic-dwell-engine"
+$SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$BACKEND    = Resolve-Path $SCRIPT_DIR
+$FRONTEND   = Resolve-Path (Join-Path $SCRIPT_DIR "..\..\website nomadic engine\nomadic-dwell-engine")
+
+if (-not (Test-Path $FRONTEND)) {
+    Write-Host ""
+    Write-Host "  React UI folder not found:" -ForegroundColor Red
+    Write-Host "    $FRONTEND" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "  Update start.ps1 if your nomadic-dwell-engine path differs." -ForegroundColor Yellow
+    exit 1
+}
+
+$PYTHON = $env:PYTHON
+if (-not $PYTHON) { $PYTHON = "python" }
+$NPM    = $env:NPM
+if (-not $NPM) { $NPM = "npm" }
 
 
 # ── Helpers ───────────────────────────────────────────────────
