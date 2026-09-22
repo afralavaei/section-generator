@@ -177,7 +177,18 @@ def solve_dwelling_3d(spec: dict) -> list[dict]:
             "type":     fn_type,
             "d_offset": d_offset,
             "d":        d,
-            "W":        shared_W,   # uniform frame — all sections same width
+            # The section's modules were actually solved at fn_W, not
+            # shared_W — sections that always need a corridor (kitchen, bed)
+            # or that have a wide natural inner width (living) can need more
+            # room than the dwelling-level W. Reporting shared_W here used to
+            # make the renderer draw a frame narrower than what these
+            # sections' own modules occupy, so their corridor/shelf modules
+            # visibly poked out past the drawn walls. plot_dwelling_3d takes
+            # max(s["W"] for s in sections) for the whole dwelling's frame,
+            # so reporting the true fn_W per section makes that frame wide
+            # enough to actually contain every section — still one uniform
+            # frame overall, just sized to what's really needed.
+            "W":        fn_W,
             "H":        H,
             "placed":   placed,
         })
