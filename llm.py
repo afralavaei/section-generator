@@ -56,7 +56,13 @@ def _key_for(provider: str, raise_if_missing: bool = True) -> str:
         _keys[provider] = key
         return key
     if raise_if_missing:
-        raise RuntimeError(f"No API key for {provider} — add it in the sidebar.")
+        # "the sidebar" was the old Streamlit prototype's key-entry UI — this
+        # runs standalone (API server) now, so the only place to fix it is
+        # the environment it's deployed in.
+        raise RuntimeError(
+            f"No API key for {provider} — set the {_ENV_VARS[provider]} "
+            f"environment variable on the server running this API."
+        )
     return ""
 
 
@@ -75,7 +81,7 @@ DINING_SCHEMA = {
         "action":         {"type": "string",  "enum": ["update", "clarify"]},
         "dining_style":   {"type": "string",  "enum": ["compact", "spacious"]},
         "num_chairs":     {"type": "integer", "minimum": 1, "maximum": 2},
-        "h":              {"type": "integer", "minimum": 7, "maximum": 8},
+        "h":              {"type": "integer", "minimum": 7, "maximum": 11},
         "d":              {"type": "integer", "minimum": 2, "maximum": 9},
         "roof_style":     {"type": "string",  "enum": ["any", "plain", "divided", "pitched", "slanted", "divided_slanted"]},
         "preferred_tags": {"type": "array",   "items": {"type": "string"}},
